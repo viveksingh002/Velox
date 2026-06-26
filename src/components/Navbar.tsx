@@ -1,26 +1,26 @@
 "use client";
-
+ 
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
-
+ 
 const navLinks = [
   { label: "Fleet", href: "#fleet" },
   { label: "How it works", href: "#how" },
   { label: "Pricing", href: "#pricing" },
   { label: "Support", href: "#support" },
 ];
-
-export default function Navbar() {
+ 
+export default function Navbar({ onBookNow }: { onBookNow?: () => void }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
-
+ 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 12);
     window.addEventListener("scroll", onScroll);
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
-
+ 
   return (
     <header
       style={{ position: "fixed", top: 0, left: 0, right: 0, zIndex: 9999 }}
@@ -47,7 +47,7 @@ export default function Navbar() {
         >
           Vëlox
         </Link>
-
+ 
         {/* Desktop Links */}
         <ul className="hidden md:flex items-center gap-8 absolute left-1/2 -translate-x-1/2">
           {navLinks.map((link) => (
@@ -61,7 +61,7 @@ export default function Navbar() {
             </li>
           ))}
         </ul>
-
+ 
         {/* Desktop Actions */}
         <div className="hidden md:flex items-center gap-2.5">
           <Link
@@ -70,14 +70,15 @@ export default function Navbar() {
           >
             Sign in
           </Link>
-          <Link
-            href="/book"
+          {/* ← Book now ab wizard kholega */}
+          <button
+            onClick={onBookNow}
             className="text-[13.5px] font-medium text-white bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg transition-all duration-200 shadow-[0_1px_3px_rgba(37,99,235,0.35)]"
           >
             Book now
-          </Link>
+          </button>
         </div>
-
+ 
         {/* Hamburger */}
         <button
           onClick={() => setMenuOpen((prev) => !prev)}
@@ -101,7 +102,7 @@ export default function Navbar() {
           />
         </button>
       </motion.nav>
-
+ 
       {/* Mobile Menu */}
       <AnimatePresence>
         {menuOpen && (
@@ -133,12 +134,13 @@ export default function Navbar() {
               >
                 Sign in
               </Link>
-              <Link
-                href="/book"
+              {/* Mobile Book now */}
+              <button
+                onClick={() => { setMenuOpen(false); onBookNow?.(); }}
                 className="flex-1 text-center text-[13.5px] font-medium text-white bg-blue-600 hover:bg-blue-700 py-2.5 rounded-xl transition-all shadow-[0_1px_3px_rgba(37,99,235,0.35)]"
               >
                 Book now
-              </Link>
+              </button>
             </div>
           </motion.div>
         )}

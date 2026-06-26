@@ -11,6 +11,7 @@ export default function SigninPage() {
   const [message, setMessage] = useState('')
   const [isSuccess, setIsSuccess] = useState(false)
   const [isSignup, setIsSignup] = useState(false)
+  const [name, setName] = useState('')
 
   const handleGoogle = async () => {
     setLoading(true)
@@ -22,20 +23,23 @@ export default function SigninPage() {
   }
 
   const handleSubmit = async () => {
-    if (!email || !password) return setMessage('Email aur password dono bharo')
-    if (password.length < 6) return setMessage('Password kam se kam 6 characters hona chahiye')
+      if (isSignup && !name.trim()) return setMessage('Please enter your full name.')
+    if (!email || !password) return setMessage('Please enter your email and password.')
+    if (password.length < 6) return setMessage('Password must be at least 6 characters.')
     setLoading(true); setMessage(''); setIsSuccess(false)
 
     if (isSignup) {
       const { error } = await supabase.auth.signUp({
         email, password,
-        options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
+        options: { emailRedirectTo: `${window.location.origin}/auth/callback`,
+        data: { full_name: name } 
+      },
       })
       if (error) setMessage(error.message)
-      else { setIsSuccess(true); setMessage('Email check karo — confirmation link bheja hai.') }
+      else { setIsSuccess(true); setMessage('Check your email for a confirmation link.') }
     } else {
       const { error } = await supabase.auth.signInWithPassword({ email, password })
-      if (error) setMessage(error.message === 'Invalid login credentials' ? 'Email ya password galat hai' : error.message)
+      if (error) setMessage(error.message === 'Invalid login credentials' ? 'Invalid email or password.' : error.message)
       else window.location.href = '/dashboard'
     }
     setLoading(false)
@@ -116,8 +120,7 @@ export default function SigninPage() {
           cursor: pointer;
           text-decoration: none;
           transition: all 0.2s;
-          font-size: 14px;
-          line-height: 1;
+          font-size: 13px;
         }
         .sp-close:hover {
           background: rgba(255,255,255,0.1);
@@ -184,9 +187,23 @@ export default function SigninPage() {
         .sp-divider-line { flex: 1; height: 1px; background: rgba(255,255,255,0.07); }
         .sp-divider-text { font-size: 11px; color: rgba(255,255,255,0.2); font-weight: 600; letter-spacing: 1.5px; }
 
+        .sp-input-wrap {
+          position: relative;
+          margin-bottom: 0.75rem;
+        }
+        .sp-input-icon {
+          position: absolute;
+          left: 18px;
+          top: 50%;
+          transform: translateY(-50%);
+          color: rgba(255,255,255,0.2);
+          pointer-events: none;
+          display: flex;
+          align-items: center;
+        }
         .sp-input {
           width: 100%;
-          padding: 13px 18px;
+          padding: 13px 18px 13px 44px;
           border: 1px solid rgba(255,255,255,0.08);
           border-radius: 980px;
           font-size: 14px;
@@ -195,7 +212,6 @@ export default function SigninPage() {
           outline: none;
           transition: all 0.2s;
           font-family: inherit;
-          margin-bottom: 0.75rem;
           -webkit-text-fill-color: #fff;
         }
         .sp-input::placeholder { color: rgba(255,255,255,0.22); }
@@ -203,6 +219,10 @@ export default function SigninPage() {
           border-color: rgba(0,113,227,0.55);
           background: rgba(0,113,227,0.05);
           box-shadow: 0 0 0 3px rgba(0,113,227,0.1);
+        }
+        .sp-input:focus ~ .sp-input-icon,
+        .sp-input-wrap:focus-within .sp-input-icon {
+          color: rgba(0,113,227,0.7);
         }
 
         .sp-message {
@@ -212,6 +232,10 @@ export default function SigninPage() {
           margin-bottom: 0.85rem;
           text-align: center;
           line-height: 1.5;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 6px;
         }
         .sp-message.error {
           color: #fca5a5;
@@ -242,6 +266,7 @@ export default function SigninPage() {
           align-items: center;
           justify-content: center;
           gap: 8px;
+          letter-spacing: 0.2px;
         }
         .sp-submit:hover:not(:disabled) {
           transform: translateY(-2px);
@@ -272,8 +297,24 @@ export default function SigninPage() {
           font-size: 13px;
           font-family: inherit;
           padding: 0;
+          transition: color 0.2s;
         }
         .sp-toggle button:hover { color: #7dd5fc; }
+
+        .sp-terms {
+          text-align: center;
+          font-size: 11px;
+          color: rgba(255,255,255,0.15);
+          margin-top: 1.4rem;
+          line-height: 1.6;
+        }
+        .sp-terms a {
+          color: rgba(255,255,255,0.28);
+          text-decoration: underline;
+          cursor: pointer;
+          transition: color 0.2s;
+        }
+        .sp-terms a:hover { color: rgba(255,255,255,0.5); }
 
         @media (max-width: 480px) {
           .sp-card { padding: 2rem 1.5rem 1.8rem; border-radius: 20px; }
@@ -286,12 +327,15 @@ export default function SigninPage() {
 
         <div className="sp-card">
 
-          {/* X button — photo jaisa */}
+          {/* Close → home */}
           <Link href="/" className="sp-close" aria-label="Close">
-            ✕
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+              <path d="M18 6L6 18M6 6l12 12"/>
+            </svg>
           </Link>
 
-          {/* Logo + tagline */}
+          {/* Logo */}
           <div className="sp-top">
             <Link href="/" className="sp-logo">Vëlox</Link>
             <p className="sp-tagline">
@@ -317,32 +361,76 @@ export default function SigninPage() {
             <div className="sp-divider-line" />
           </div>
 
-          {/* Email */}
-          <input
-            className="sp-input"
-            type="email"
-            placeholder="Email address"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            disabled={loading}
-            autoComplete="email"
-          />
+{/* Name — only on signup */}
+{isSignup && (
+  <div className="sp-input-wrap">
+    <span className="sp-input-icon">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
+        stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="12" cy="8" r="4"/>
+        <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
+      </svg>
+    </span>
+    <input
+      className="sp-input"
+      type="text"
+      placeholder="Full name"
+      value={name}
+      onChange={(e) => setName(e.target.value)}
+      disabled={loading}
+      autoComplete="name"
+    />
+  </div>
+)}
 
-          {/* Password */}
-          <input
-            className="sp-input"
-            type="password"
-            placeholder="Password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            disabled={loading}
-            autoComplete={isSignup ? 'new-password' : 'current-password'}
-            onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
-          />
+          {/* Email input with icon */}
+          <div className="sp-input-wrap">
+            <span className="sp-input-icon">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="2" y="4" width="20" height="16" rx="3"/>
+                <path d="M2 7l10 7 10-7"/>
+              </svg>
+            </span>
+            <input
+              className="sp-input"
+              type="email"
+              placeholder="Email address"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              disabled={loading}
+              autoComplete="email"
+            />
+          </div>
 
-          {/* Message */}
+          {/* Password input with icon */}
+          <div className="sp-input-wrap">
+            <span className="sp-input-icon">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="11" width="18" height="11" rx="2"/>
+                <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+              </svg>
+            </span>
+            <input
+              className="sp-input"
+              type="password"
+              placeholder="Password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              disabled={loading}
+              autoComplete={isSignup ? 'new-password' : 'current-password'}
+              onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
+            />
+          </div>
+
+          {/* Error / Success */}
           {message && (
             <div className={`sp-message ${isSuccess ? 'success' : 'error'}`}>
+              {isSuccess
+                ? <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M20 6L9 17l-5-5"/></svg>
+                : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
+              }
               {message}
             </div>
           )}
@@ -350,17 +438,25 @@ export default function SigninPage() {
           {/* Submit */}
           <button className="sp-submit" onClick={handleSubmit} disabled={loading}>
             {loading
-              ? <><div className="sp-spinner" /> Please wait...</>
+              ? <><div className="sp-spinner" /> Authenticating...</>
               : isSignup ? 'Create account' : 'Sign in'}
           </button>
 
           {/* Toggle */}
           <div className="sp-toggle">
             {isSignup ? 'Already have an account? ' : 'No account? '}
-            <button onClick={() => { setIsSignup(!isSignup); setMessage(''); setIsSuccess(false) }}>
-              {isSignup ? 'Sign in →' : 'Create one →'}
+            <button onClick={() => { setIsSignup(!isSignup); setMessage(''); setIsSuccess(false);setName('') }}>
+              {isSignup ? 'Sign in' : 'Create one →'}
             </button>
           </div>
+
+          {/* Terms — only on signup */}
+          {isSignup && (
+            <p className="sp-terms">
+              By creating an account, you agree to our{' '}
+              <a>Terms of Service</a> and <a>Privacy Policy</a>.
+            </p>
+          )}
 
         </div>
       </div>
