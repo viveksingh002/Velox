@@ -19,14 +19,12 @@ export default function Navbar() {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Scroll effect
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 12);
     window.addEventListener("scroll", onScroll);
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  // Get current user
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
       setUser(data.user ?? null);
@@ -39,7 +37,6 @@ export default function Navbar() {
     return () => listener.subscription.unsubscribe();
   }, []);
 
-  // Close dropdown on outside click
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
@@ -57,7 +54,6 @@ export default function Navbar() {
     window.location.href = "/";
   };
 
-  // Get initials from name or email
   const getInitials = () => {
     const name = user?.user_metadata?.full_name || user?.email || "";
     if (user?.user_metadata?.full_name) {
@@ -170,6 +166,23 @@ export default function Navbar() {
         }
         .nav-dropdown-item:hover svg { opacity: 0.9; }
 
+        .nav-dropdown-item.partner {
+          color: rgba(255,255,255,0.65);
+          position: relative;
+        }
+        .nav-dropdown-item.partner:hover {
+          background: rgba(255,255,255,0.06);
+          color: #fff;
+        }
+        .nav-dropdown-item.partner .partner-arrow {
+          margin-left: auto;
+          opacity: 0.3;
+          font-size: 12px;
+        }
+        .nav-dropdown-item.partner:hover .partner-arrow {
+          opacity: 0.7;
+        }
+
         .nav-dropdown-item.logout {
           color: rgba(255,100,100,0.7);
           margin-top: 0.3rem;
@@ -220,7 +233,6 @@ export default function Navbar() {
           {/* Right side */}
           <div className="hidden md:flex items-center gap-2.5">
             {user ? (
-              // ── Logged in — Avatar + Dropdown ──
               <div className="relative" ref={dropdownRef}>
                 <div
                   className="nav-avatar"
@@ -254,6 +266,43 @@ export default function Navbar() {
                         My Bookings
                       </Link>
 
+                      {/* Become a Partner */}
+                      <Link href="/partner" className="nav-dropdown-item partner" onClick={() => setDropdownOpen(false)}>
+                        <span style={{ display: "flex", alignItems: "center", gap: "4px", flexShrink: 0 }}>
+                          {/* Bike circle */}
+                          <span style={{ width: "24px", height: "24px", borderRadius: "50%", background: "rgba(255,255,255,0.12)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{opacity:0.85}}>
+                              <circle cx="5.5" cy="17.5" r="3.5"/>
+                              <circle cx="18.5" cy="17.5" r="3.5"/>
+                              <path d="M15 6a1 1 0 0 0-1-1h-1"/>
+                              <path d="M15 6l3 4.5"/>
+                              <path d="M9 6l1.5 5.5L5.5 17"/>
+                              <path d="M9 6h6"/>
+                              <path d="M12 11.5L18.5 17"/>
+                            </svg>
+                          </span>
+                          {/* Car circle */}
+                          <span style={{ width: "24px", height: "24px", borderRadius: "50%", background: "rgba(255,255,255,0.12)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{opacity:0.85}}>
+                              <path d="M5 17H3a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h1l3-4h10l3 4h1a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2h-2"/>
+                              <circle cx="7" cy="17" r="2"/>
+                              <circle cx="17" cy="17" r="2"/>
+                            </svg>
+                          </span>
+                          {/* Truck circle */}
+                          <span style={{ width: "24px", height: "24px", borderRadius: "50%", background: "rgba(255,255,255,0.12)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{opacity:0.85}}>
+                              <rect x="1" y="3" width="15" height="13" rx="1"/>
+                              <path d="M16 8h4l3 5v3h-7V8z"/>
+                              <circle cx="5.5" cy="18.5" r="2.5"/>
+                              <circle cx="18.5" cy="18.5" r="2.5"/>
+                            </svg>
+                          </span>
+                        </span>
+                        Become a Partner
+                        <span className="partner-arrow">›</span>
+                      </Link>
+
                       {/* Profile */}
                       <Link href="/profile" className="nav-dropdown-item" onClick={() => setDropdownOpen(false)}>
                         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -277,7 +326,6 @@ export default function Navbar() {
                 </AnimatePresence>
               </div>
             ) : (
-              // ── Not logged in ──
               <>
                 <Link href="/signin" className="text-[13.5px] font-medium text-slate-700 px-4 py-2 rounded-lg hover:bg-white/80 transition-all duration-200">
                   Sign in
@@ -320,6 +368,14 @@ export default function Navbar() {
                     </Link>
                   </li>
                 ))}
+                {user && (
+                  <li>
+                    <Link href="/partner" onClick={() => setMenuOpen(false)} className="flex items-center justify-between px-6 py-4 text-[14px] text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition-colors">
+                      Become a Partner
+                      <span className="text-slate-400 text-xs">›</span>
+                    </Link>
+                  </li>
+                )}
               </ul>
               <div className="flex gap-3 px-6 py-4 border-t border-slate-100">
                 {user ? (
