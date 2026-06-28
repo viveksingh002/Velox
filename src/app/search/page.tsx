@@ -1,445 +1,450 @@
-'use client'
+"use client";
 
-import { useEffect, useRef, useState } from 'react'
-import { useSearchParams, useRouter } from 'next/navigation'
+import { useSearchParams, useRouter } from "next/navigation";
+import { motion, AnimatePresence } from "framer-motion";
+import { useState, useEffect } from "react";
+import dynamic from "next/dynamic";
+import {
+  ArrowLeft, MapPin, Navigation,
+  Bike, Car, Truck, Clock, Route,
+  Zap, Search, RefreshCw
+} from "lucide-react";
+import VehicleBookingCard from "@/components/VehicleBookingCard";
 
-const fakeVehicles = {
-  bike: [
-    { id: 1, name: 'Hunter 350', plate: 'UP81A51234', rating: 4.8, perKm: 10, waiting: 2, fare: 63, tag: 'BEST PICK' },
-    { id: 2, name: 'Splendor+', plate: 'UP81B98765', rating: 4.5, perKm: 8, waiting: 5, fare: 52, tag: null },
-  ],
-  auto: [
-    { id: 3, name: 'Bajaj RE', plate: 'UP81C11223', rating: 4.7, perKm: 12, waiting: 3, fare: 75, tag: 'BEST PICK' },
-  ],
-  car: [
-    { id: 4, name: 'Swift Dzire', plate: 'UP81D44556', rating: 4.9, perKm: 18, waiting: 4, fare: 149, tag: 'BEST PICK' },
-    { id: 5, name: 'Honda City', plate: 'UP81E77889', rating: 4.6, perKm: 20, waiting: 7, fare: 189, tag: null },
-  ],
-  loading: [
-    { id: 6, name: 'Tata Ace', plate: 'UP81F22334', rating: 4.4, perKm: 25, waiting: 8, fare: 220, tag: 'BEST PICK' },
-  ],
-  truck: [
-    { id: 7, name: 'Ashok Leyland', plate: 'UP81G55667', rating: 4.3, perKm: 40, waiting: 12, fare: 450, tag: 'BEST PICK' },
-  ],
-}
+const RouteMap = dynamic(() => import("@/components/RouteMap"), { ssr: false });
 
-function VehicleIcon({ type, size = 20 }: { type: string; size?: number }) {
-  if (type === 'bike') return (
-    <svg width={size} height={size} viewBox="0 0 48 48" fill="none">
-      <circle cx="11" cy="34" r="7" stroke="currentColor" strokeWidth="2.5"/>
-      <circle cx="37" cy="34" r="7" stroke="currentColor" strokeWidth="2.5"/>
-      <path d="M11 34 L20 20 L28 20 L37 27" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-      <path d="M20 20 L24 14 L30 14 L32 20" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-      <path d="M20 20 L28 20" stroke="currentColor" strokeWidth="3" strokeLinecap="round"/>
-    </svg>
-  )
-  if (type === 'car') return (
-    <svg width={size} height={size} viewBox="0 0 48 48" fill="none">
-      <rect x="4" y="26" width="40" height="10" rx="3" stroke="currentColor" strokeWidth="2.5"/>
-      <path d="M10 26 L15 16 L33 16 L38 26" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-      <circle cx="13" cy="36" r="4.5" stroke="currentColor" strokeWidth="2.5"/>
-      <circle cx="35" cy="36" r="4.5" stroke="currentColor" strokeWidth="2.5"/>
-    </svg>
-  )
-  return (
-    <svg width={size} height={size} viewBox="0 0 48 48" fill="none">
-      <rect x="3" y="24" width="42" height="12" rx="3" stroke="currentColor" strokeWidth="2.5"/>
-      <path d="M8 24 L11 13 L37 13 L40 24" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-      <circle cx="12" cy="36" r="5" stroke="currentColor" strokeWidth="2.5"/>
-      <circle cx="36" cy="36" r="5" stroke="currentColor" strokeWidth="2.5"/>
-    </svg>
-  )
-}
-
-// Geocode using OpenStreetMap Nominatim (free, no key needed)
-async function geocode(place: string): Promise<[number, number] | null> {
-  try {
-    const res = await fetch(
-      `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(place)}&format=json&limit=1&countrycodes=in`,
-      { headers: { 'Accept-Language': 'en' } }
-    )
-    const data = await res.json()
-    if (!data.length) return null
-    return [parseFloat(data[0].lat), parseFloat(data[0].lon)]
-  } catch { return null }
-}
-
-// Get route using OSRM (free, no key needed)
-async function getRoute(from: [number, number], to: [number, number]) {
-  try {
-    const res = await fetch(
-      `https://router.project-osrm.org/route/v1/driving/${from[1]},${from[0]};${to[1]},${to[0]}?overview=full&geometries=geojson`
-    )
-    const data = await res.json()
-    if (!data.routes?.length) return null
-    return {
-      coords: data.routes[0].geometry.coordinates.map((c: number[]) => [c[1], c[0]]) as [number, number][],
-      distance: (data.routes[0].distance / 1000).toFixed(1),
-      duration: Math.round(data.routes[0].duration / 60),
-    }
-  } catch { return null }
-}
+const VEHICLE_META: Record<string, { label: string; Icon: any }> = {
+  bike:    { label: "Bike",    Icon: Bike  },
+  auto:    { label: "Auto",    Icon: Car   },
+  car:     { label: "Car",     Icon: Car   },
+  loading: { label: "Loading", Icon: Truck },
+  truck:   { label: "Truck",   Icon: Truck },
+};
 
 export default function SearchPage() {
-  const params = useSearchParams()
-  const router = useRouter()
-  const mapRef = useRef<HTMLDivElement>(null)
-  const mapInstance = useRef<any>(null)
-  const [mapReady, setMapReady] = useState(false)
-  const [routeInfo, setRouteInfo] = useState<{ distance: string; duration: number } | null>(null)
+  const params = useSearchParams();
+  const router = useRouter();
 
-  const pickup = decodeURIComponent(params.get('pickup') || '')
-  const drop = decodeURIComponent(params.get('drop') || '')
-  const vehicle = params.get('vehicle') || 'bike'
-  const mobile = params.get('mobile') || ''
-  const vehicles = fakeVehicles[vehicle as keyof typeof fakeVehicles] || fakeVehicles.bike
+  const [pickup,   setPickup]   = useState(params.get("pickup")  || "");
+  const [drop,     setDrop]     = useState(params.get("drop")    || "");
+  const [km,       setKm]       = useState<number | null>(null);
+  const [vehicles, setVehicles] = useState<any[]>([]);
+  const [loading,  setLoading]  = useState(false);
+
+  const vehicle      = params.get("vehicle")      || "";
+  const mobileNumber = params.get("mobileNumber") || params.get("mobile") || "";
+  const pickupLat    = Number(params.get("pickupLat"));
+  const pickupLng    = Number(params.get("pickupLng"));
+  const meta         = VEHICLE_META[vehicle];
+  const eta          = km !== null ? Math.max(3, Math.round((km / 25) * 60)) : null;
+
+  async function fetchNearbyVehicles(lat: number, lng: number) {
+    try {
+      setLoading(true);
+      const res  = await fetch("/api/vehicles/nearby", {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify({ latitude: lat, longitude: lng, vehicleType: vehicle }),
+      });
+      const data = await res.json();
+      if (data.success) setVehicles(data.vehicles);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  }
 
   useEffect(() => {
-    if (mapInstance.current || !mapRef.current) return
-
-    // Load Leaflet CSS + JS dynamically (no npm install needed)
-    const link = document.createElement('link')
-    link.rel = 'stylesheet'
-    link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'
-    document.head.appendChild(link)
-
-    const script = document.createElement('script')
-    script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'
-    script.onload = async () => {
-      const L = (window as any).L
-
-      // Fix default marker icon path issue in Next.js
-      delete (L.Icon.Default.prototype as any)._getIconUrl
-      L.Icon.Default.mergeOptions({
-        iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
-        iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-        shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-      })
-
-      // Init map — default center India
-      const map = L.map(mapRef.current!, { zoomControl: true, scrollWheelZoom: true })
-
-      // OpenStreetMap tiles — completely free
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© OpenStreetMap contributors',
-        maxZoom: 19,
-      }).addTo(map)
-
-      map.setView([25.4484, 78.5691], 13) // Default: Jhansi, UP
-      mapInstance.current = map
-      setMapReady(true)
-
-      // Geocode both locations
-      const [pickupCoord, dropCoord] = await Promise.all([
-        geocode(pickup),
-        geocode(drop),
-      ])
-
-      if (pickupCoord) {
-        // Custom pickup marker (black pill)
-        const pickupIcon = L.divIcon({
-          className: '',
-          html: `<div style="background:#111;color:#fff;padding:5px 12px;border-radius:20px;font-size:11px;font-weight:700;font-family:Inter,sans-serif;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,0.25);border:2px solid #fff;">PICKUP</div>`,
-          iconAnchor: [30, 28],
-        })
-        L.marker(pickupCoord, { icon: pickupIcon }).addTo(map)
-        map.setView(pickupCoord, 14)
-      }
-
-      if (dropCoord) {
-        // Custom drop marker (blue pill)
-        const dropIcon = L.divIcon({
-          className: '',
-          html: `<div style="background:#0071e3;color:#fff;padding:5px 12px;border-radius:20px;font-size:11px;font-weight:700;font-family:Inter,sans-serif;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,0.25);border:2px solid #fff;">DROP</div>`,
-          iconAnchor: [24, 28],
-        })
-        L.marker(dropCoord, { icon: dropIcon }).addTo(map)
-      }
-
-      // Draw route if both found
-      if (pickupCoord && dropCoord) {
-        const route = await getRoute(pickupCoord, dropCoord)
-        if (route) {
-          // Draw polyline
-          L.polyline(route.coords, {
-            color: '#111',
-            weight: 4,
-            opacity: 0.85,
-          }).addTo(map)
-
-          // Fit both markers in view
-          map.fitBounds([pickupCoord, dropCoord], { padding: [50, 50] })
-          setRouteInfo({ distance: route.distance, duration: route.duration })
-        }
-      }
-    }
-    document.head.appendChild(script)
-
-    return () => {
-      if (mapInstance.current) {
-        mapInstance.current.remove()
-        mapInstance.current = null
-      }
-    }
-  }, [])
-
-  const handleSelect = (v: typeof vehicles[0]) => {
-    const p = new URLSearchParams({
-      pickup, drop, vehicle,
-      vehicleName: v.name,
-      plate: v.plate,
-      fare: String(v.fare),
-      rating: String(v.rating),
-      mobile,
-    })
-    router.push(`/checkout?${p.toString()}`)
-  }
+    if (!pickupLat || !pickupLng) return;
+    fetchNearbyVehicles(pickupLat, pickupLng);
+  }, [pickupLat, pickupLng]);
 
   return (
     <>
       <style>{`
-        * { box-sizing: border-box; margin: 0; padding: 0; }
         .search-root {
-          height: 100svh; display: flex; flex-direction: column;
+          min-height: 100svh;
+          background: #f4f4f6;
           font-family: 'Inter', -apple-system, sans-serif;
-          background: #f4f4f6; overflow: hidden;
+          overflow-x: hidden;
+          position: relative;
         }
 
-        /* Map */
-        .search-map { flex: 1; position: relative; min-height: 0; }
-        .search-map-el { width: 100%; height: 100%; }
-
-        /* Badges over map */
-        .search-overlay-tl {
-          position: absolute; top: 12px; left: 12px;
-          display: flex; gap: 8px; z-index: 999; pointer-events: none;
-        }
-        .search-dist-badge {
-          background: #fff; border: 1px solid #e0e0e0;
-          border-radius: 980px; padding: 5px 12px;
-          font-size: 11px; font-weight: 600; color: #555;
-          box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-          display: flex; align-items: center; gap: 5px;
-        }
-        .search-live {
-          position: absolute; top: 12px; right: 12px; z-index: 999;
-          display: flex; align-items: center; gap: 6px;
-          background: #fff; border: 1px solid #e0e0e0;
-          border-radius: 980px; padding: 5px 12px;
-          font-size: 11px; font-weight: 700; color: #111;
-          box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        }
-        .search-live-dot {
-          width: 7px; height: 7px; border-radius: 50%; background: #22c55e;
-          animation: livePulse 2s infinite;
-        }
-        @keyframes livePulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
-
-        /* Bottom panel */
-        .search-panel {
+        /* ── Back button ── */
+        .search-back {
+          position: absolute;
+          top: 18px; left: 18px;
+          z-index: 50;
+          width: 42px; height: 42px;
+          border-radius: 50%;
           background: #fff;
-          border-top-left-radius: 20px; border-top-right-radius: 20px;
-          box-shadow: 0 -4px 20px rgba(0,0,0,0.08);
-          overflow: hidden; max-height: 56vh;
-          display: flex; flex-direction: column;
-        }
-        .search-panel-handle {
-          width: 36px; height: 4px; border-radius: 2px;
-          background: #e0e0e0; margin: 10px auto 0;
-        }
-
-        /* Route summary */
-        .search-route {
-          padding: 12px 16px; border-bottom: 1px solid #f0f0f0;
-        }
-        .search-route-inner { display: flex; align-items: stretch; gap: 10px; }
-        .search-route-dots { display: flex; flex-direction: column; align-items: center; padding-top: 4px; }
-        .search-route-dot-fill { width: 8px; height: 8px; border-radius: 50%; background: #111; flex-shrink: 0; }
-        .search-route-dot-empty { width: 8px; height: 8px; border-radius: 50%; border: 2px solid #111; flex-shrink: 0; }
-        .search-route-line { flex: 1; width: 1px; background: #ddd; margin: 3px 0; }
-        .search-route-texts { flex: 1; display: flex; flex-direction: column; justify-content: space-between; gap: 8px; }
-        .search-route-item { display: flex; align-items: flex-start; justify-content: space-between; }
-        .search-route-label { font-size: 9px; color: #bbb; letter-spacing: 1px; font-weight: 700; }
-        .search-route-text { font-size: 13px; color: #111; font-weight: 500; line-height: 1.3; }
-        .search-route-icon { color: #bbb; cursor: pointer; flex-shrink: 0; margin-left: 8px; }
-
-        /* List */
-        .search-list { overflow-y: auto; flex: 1; padding: 12px 16px 20px; }
-        .search-list-header { font-size: 16px; font-weight: 700; color: #111; letter-spacing: -0.3px; margin-bottom: 2px; }
-        .search-list-sub { font-size: 12px; color: #aaa; margin-bottom: 12px; }
-
-        /* Vehicle card */
-        .search-vcard {
-          border: 1.5px solid #ebebeb; border-radius: 16px;
-          padding: 14px; margin-bottom: 10px; cursor: pointer;
-          transition: all 0.2s; background: #fff; position: relative;
-        }
-        .search-vcard:hover { border-color: #111; box-shadow: 0 4px 16px rgba(0,0,0,0.08); transform: translateY(-1px); }
-        .search-vcard-best {
-          display: inline-flex; align-items: center; gap: 4px;
-          font-size: 10px; font-weight: 700; padding: 3px 10px;
-          background: #111; color: #fff; border-radius: 980px; margin-bottom: 10px;
-        }
-        .search-vcard-top { display: flex; gap: 12px; margin-bottom: 12px; }
-        .search-vcard-img {
-          width: 88px; height: 64px; border-radius: 12px;
-          background: linear-gradient(135deg, #f0f2f5, #e4e8ef);
+          border: 1px solid #e4e4e7;
+          box-shadow: 0 2px 10px rgba(0,0,0,0.10);
           display: flex; align-items: center; justify-content: center;
-          flex-shrink: 0; color: #444;
+          cursor: pointer; color: #111;
+          transition: background 0.18s;
         }
-        .search-vcard-info { flex: 1; }
-        .search-vcard-name { font-size: 17px; font-weight: 700; color: #111; letter-spacing: -0.3px; }
-        .search-vcard-plate { font-size: 11px; color: #aaa; font-weight: 500; margin-top: 2px; letter-spacing: 0.5px; }
-        .search-vcard-badges { display: flex; gap: 6px; margin-top: 7px; }
-        .search-vcard-badge {
-          font-size: 10px; font-weight: 700; padding: 3px 9px; border-radius: 980px;
-          display: flex; align-items: center; gap: 3px;
+        .search-back:hover { background: #f5f5f5; }
+
+        /* ── Map container ── */
+        .search-map-wrap {
+          position: relative;
+          width: 100%;
+          height: 52vh;
+          z-index: 0;
         }
-        .badge-rating { background: #f5f5f5; color: #555; }
-        .badge-type { background: #111; color: #fff; }
-
-        .search-vcard-stats {
-          display: flex; gap: 20px; padding: 10px 0;
-          border-top: 1px solid #f0f0f0; border-bottom: 1px solid #f0f0f0;
-          margin-bottom: 10px;
+        .search-map-fade {
+          position: absolute;
+          bottom: 0; left: 0; right: 0;
+          height: 80px;
+          background: linear-gradient(to top, #f4f4f6, transparent);
+          pointer-events: none;
+          z-index: 10;
         }
-        .search-vcard-stat { display: flex; align-items: center; gap: 6px; }
-        .search-vcard-stat-lbl { font-size: 10px; color: #aaa; font-weight: 600; }
-        .search-vcard-stat-val { font-size: 13px; font-weight: 700; color: #111; }
 
-        .search-vcard-footer { display: flex; align-items: center; justify-content: space-between; }
-        .search-vcard-fare { }
-        .search-vcard-fare-lbl { font-size: 10px; color: #aaa; font-weight: 600; letter-spacing: 0.5px; }
-        .search-vcard-fare-amt { font-size: 30px; font-weight: 800; color: #111; letter-spacing: -1px; line-height: 1; }
-        .search-vcard-fare-sym { font-size: 18px; }
-
-        .search-book-btn {
-          padding: 11px 24px; background: #111; color: #fff;
-          border: none; border-radius: 10px; font-size: 14px; font-weight: 700;
-          cursor: pointer; transition: all 0.2s; font-family: inherit;
+        /* Floating metric pills */
+        .search-metrics {
+          position: absolute;
+          top: 18px; left: 50%;
+          transform: translateX(-50%);
+          display: flex; gap: 8px;
+          z-index: 999;
+          pointer-events: none;
+        }
+        .search-metric-pill {
           display: flex; align-items: center; gap: 6px;
+          background: rgba(255,255,255,0.92);
+          backdrop-filter: blur(8px);
+          border: 1px solid rgba(0,0,0,0.08);
+          box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+          padding: 6px 14px;
+          border-radius: 980px;
+          font-size: 12px; font-weight: 600; color: #444;
+          white-space: nowrap;
         }
-        .search-book-btn:hover { background: #000; transform: scale(1.03); }
 
-        .search-list::-webkit-scrollbar { width: 3px; }
-        .search-list::-webkit-scrollbar-thumb { background: #e0e0e0; border-radius: 2px; }
+        /* ── Bottom sheet ── */
+        .search-sheet {
+          position: relative;
+          z-index: 20;
+          margin-top: -40px;
+          background: #fff;
+          border-top-left-radius: 28px;
+          border-top-right-radius: 28px;
+          border-top: 1px solid #ebebeb;
+          box-shadow: 0 -8px 40px rgba(0,0,0,0.07);
+          padding: 20px 0 80px;
+          min-height: 52vh;
+        }
+        .search-sheet-handle {
+          width: 40px; height: 4px;
+          border-radius: 2px;
+          background: #e4e4e7;
+          margin: 0 auto 20px;
+        }
+        .search-sheet-inner {
+          padding: 0 20px;
+          max-width: 1100px;
+          margin: 0 auto;
+        }
+
+        /* ── Route summary card ── */
+        .search-route-card {
+          background: #fafafa;
+          border: 1.5px solid #ebebeb;
+          border-radius: 18px;
+          overflow: hidden;
+          margin-bottom: 18px;
+        }
+        .search-route-row {
+          display: flex; align-items: flex-start; gap: 12px;
+          padding: 12px 16px;
+          border-bottom: 1px solid #f0f0f0;
+        }
+        .search-route-row:last-child { border-bottom: none; }
+        .search-route-dots {
+          display: flex; flex-direction: column;
+          align-items: center; padding-top: 4px; flex-shrink: 0;
+        }
+        .search-route-dot-fill {
+          width: 10px; height: 10px; border-radius: 50%; background: #111;
+        }
+        .search-route-dot-sq {
+          width: 10px; height: 10px; border-radius: 2px; background: #111;
+        }
+        .search-route-text-wrap { flex: 1; min-width: 0; }
+        .search-route-label {
+          font-size: 9px; color: #bbb;
+          letter-spacing: 1.5px; font-weight: 800;
+          text-transform: uppercase; margin-bottom: 2px;
+        }
+        .search-route-text {
+          font-size: 13px; font-weight: 600; color: #111;
+          white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .search-route-icon { color: #ccc; flex-shrink: 0; margin-top: 2px; }
+
+        /* ── Section header ── */
+        .search-section-header {
+          display: flex; align-items: center;
+          justify-content: space-between;
+          margin-bottom: 14px;
+        }
+        .search-section-title {
+          font-size: 18px; font-weight: 800;
+          color: #111; letter-spacing: -0.5px;
+        }
+        .search-section-sub {
+          font-size: 12px; color: #aaa; margin-top: 2px;
+        }
+
+        /* Status badges */
+        .search-badge-live {
+          display: flex; align-items: center; gap: 6px;
+          background: #f0fdf4;
+          border: 1px solid #bbf7d0;
+          padding: 5px 12px; border-radius: 980px;
+          font-size: 11px; font-weight: 700; color: #16a34a;
+        }
+        .search-badge-searching {
+          display: flex; align-items: center; gap: 6px;
+          background: #fafafa;
+          border: 1px solid #e4e4e7;
+          padding: 5px 12px; border-radius: 980px;
+          font-size: 11px; font-weight: 600; color: #888;
+        }
+        .search-spinner {
+          width: 13px; height: 13px; border-radius: 50%;
+          border: 2px solid #ddd; border-top-color: #555;
+          animation: spin 0.7s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* ── Empty state ── */
+        .search-empty {
+          display: flex; flex-direction: column;
+          align-items: center; text-align: center;
+          padding: 48px 16px;
+        }
+        .search-empty-icon {
+          width: 72px; height: 72px; border-radius: 50%;
+          background: #f5f5f5; border: 1.5px solid #ebebeb;
+          display: flex; align-items: center; justify-content: center;
+          margin-bottom: 16px; color: #bbb;
+        }
+        .search-empty-title {
+          font-size: 16px; font-weight: 700; color: #111; margin-bottom: 6px;
+        }
+        .search-empty-sub {
+          font-size: 13px; color: #aaa; max-width: 260px;
+          line-height: 1.6; margin-bottom: 20px;
+        }
+        .search-retry-btn {
+          display: flex; align-items: center; gap: 8px;
+          background: #111; color: #fff;
+          border: none; border-radius: 12px;
+          padding: 11px 24px; font-size: 13px; font-weight: 600;
+          cursor: pointer; font-family: inherit; transition: all 0.2s;
+        }
+        .search-retry-btn:hover { background: #000; transform: translateY(-1px); }
+
+        /* ── Vehicle grid ── */
+        .search-vehicle-grid {
+          display: grid;
+          grid-template-columns: 1fr;
+          gap: 14px;
+        }
+        @media (min-width: 640px)  { .search-vehicle-grid { grid-template-columns: repeat(2, 1fr); } }
+        @media (min-width: 1024px) { .search-vehicle-grid { grid-template-columns: repeat(3, 1fr); } }
+        @media (min-width: 1280px) { .search-vehicle-grid { grid-template-columns: repeat(4, 1fr); } }
       `}</style>
 
       <div className="search-root">
 
+        {/* Back button */}
+        <button className="search-back" onClick={() => router.back()}>
+          <ArrowLeft size={17} />
+        </button>
+
         {/* Map */}
-        <div className="search-map">
-          <div className="search-map-el" ref={mapRef} />
+        <div className="search-map-wrap">
+          <RouteMap
+            pickup={pickup}
+            drop={drop}
+            onDistance={setKm}
+            onChange={(p: string, d: string) => { setPickup(p); setDrop(d); }}
+          />
+          <div className="search-map-fade" />
 
-          {/* Distance / time badges */}
-          {routeInfo && (
-            <div className="search-overlay-tl">
-              <div className="search-dist-badge">
-                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M3 12h18M12 5l7 7-7 7"/></svg>
-                {routeInfo.distance} km
-              </div>
-              <div className="search-dist-badge">
-                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
-                {routeInfo.duration} min
-              </div>
+          {/* Distance + ETA pills */}
+          <motion.div
+            className="search-metrics"
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.5 }}
+          >
+            <div className="search-metric-pill">
+              <Route size={12} style={{ color: '#bbb' }} />
+              {km ? `${km} km` : "Calculating…"}
             </div>
-          )}
-
-          {/* Live badge */}
-          {mapReady && (
-            <div className="search-live">
-              <div className="search-live-dot" />
-              Live
+            <div className="search-metric-pill">
+              <Clock size={12} style={{ color: '#bbb' }} />
+              {eta ? `${eta} min` : "—"}
             </div>
-          )}
+          </motion.div>
         </div>
 
-        {/* Bottom panel */}
-        <div className="search-panel">
-          <div className="search-panel-handle" />
+        {/* Bottom sheet */}
+        <motion.div
+          className="search-sheet"
+          initial={{ y: 60, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ type: "spring", stiffness: 160, damping: 22 }}
+        >
+          <div className="search-sheet-handle" />
 
-          {/* Route summary */}
-          <div className="search-route">
-            <div className="search-route-inner">
-              <div className="search-route-dots">
-                <div className="search-route-dot-fill" />
-                <div className="search-route-line" />
-                <div className="search-route-dot-empty" />
+          <div className="search-sheet-inner">
+
+            {/* Route summary */}
+            <motion.div
+              className="search-route-card"
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.12 }}
+            >
+              <div className="search-route-row">
+                <div className="search-route-dots">
+                  <div className="search-route-dot-fill" />
+                </div>
+                <div className="search-route-text-wrap">
+                  <div className="search-route-label">Pickup</div>
+                  <div className="search-route-text">{pickup || "—"}</div>
+                </div>
+                <MapPin size={14} className="search-route-icon" />
               </div>
-              <div className="search-route-texts">
-                <div className="search-route-item">
-                  <div>
-                    <div className="search-route-label">PICKUP</div>
-                    <div className="search-route-text">{pickup || 'Pickup location'}</div>
-                  </div>
-                  <svg className="search-route-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+              <div className="search-route-row">
+                <div className="search-route-dots">
+                  <div className="search-route-dot-sq" />
                 </div>
-                <div className="search-route-item">
-                  <div>
-                    <div className="search-route-label">DROP</div>
-                    <div className="search-route-text">{drop || 'Drop location'}</div>
-                  </div>
-                  <svg className="search-route-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                <div className="search-route-text-wrap">
+                  <div className="search-route-label">Drop</div>
+                  <div className="search-route-text">{drop || "—"}</div>
                 </div>
+                <Navigation size={14} className="search-route-icon" />
               </div>
-            </div>
-          </div>
+            </motion.div>
 
-          {/* Vehicle list */}
-          <div className="search-list">
-            <div className="search-list-header">{vehicles.length} Available</div>
-            <div className="search-list-sub">{vehicle.charAt(0).toUpperCase() + vehicle.slice(1)} rides near your pickup</div>
-
-            {vehicles.map(v => (
-              <div key={v.id} className="search-vcard">
-                {v.tag && <div className="search-vcard-best">★ {v.tag}</div>}
-                <div className="search-vcard-top">
-                  <div className="search-vcard-img">
-                    <VehicleIcon type={vehicle} size={42} />
-                  </div>
-                  <div className="search-vcard-info">
-                    <div className="search-vcard-name">{v.name}</div>
-                    <div className="search-vcard-plate">{v.plate}</div>
-                    <div className="search-vcard-badges">
-                      <span className="search-vcard-badge badge-rating">★ {v.rating}</span>
-                      <span className="search-vcard-badge badge-type">⬡ {vehicle.toUpperCase()}</span>
-                    </div>
-                  </div>
+            {/* Section header */}
+            <motion.div
+              className="search-section-header"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.2 }}
+            >
+              <div>
+                <div className="search-section-title">
+                  {loading
+                    ? "Finding vehicles…"
+                    : vehicles.length > 0
+                    ? `${vehicles.length} Available`
+                    : "No vehicles nearby"}
                 </div>
+                {meta && (
+                  <div className="search-section-sub">
+                    {meta.label} rides near your pickup
+                  </div>
+                )}
+              </div>
 
-                <div className="search-vcard-stats">
-                  <div className="search-vcard-stat">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#bbb" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
-                    <div>
-                      <div className="search-vcard-stat-lbl">PER KM</div>
-                      <div className="search-vcard-stat-val">₹{v.perKm}</div>
-                    </div>
-                  </div>
-                  <div className="search-vcard-stat">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#bbb" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
-                    <div>
-                      <div className="search-vcard-stat-lbl">WAITING</div>
-                      <div className="search-vcard-stat-val">₹{v.waiting} <span style={{fontSize:10,color:'#bbb',fontWeight:400}}>min</span></div>
-                    </div>
-                  </div>
-                </div>
+              <AnimatePresence mode="wait">
+                {loading ? (
+                  <motion.div
+                    key="searching"
+                    className="search-badge-searching"
+                    initial={{ opacity: 0, scale: 0.85 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.85 }}
+                  >
+                    <div className="search-spinner" />
+                    Searching
+                  </motion.div>
+                ) : vehicles.length > 0 ? (
+                  <motion.div
+                    key="live"
+                    className="search-badge-live"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                  >
+                    <Zap size={11} fill="currentColor" />
+                    Live
+                  </motion.div>
+                ) : null}
+              </AnimatePresence>
+            </motion.div>
 
-                <div className="search-vcard-footer">
-                  <div className="search-vcard-fare">
-                    <div className="search-vcard-fare-lbl">EST. FARE</div>
-                    <div className="search-vcard-fare-amt">
-                      <span className="search-vcard-fare-sym">₹ </span>{v.fare}
-                    </div>
+            {/* Empty state */}
+            <AnimatePresence>
+              {!loading && vehicles.length === 0 && (
+                <motion.div
+                  className="search-empty"
+                  initial={{ opacity: 0, y: 16 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0 }}
+                >
+                  <div className="search-empty-icon">
+                    <Search size={26} />
                   </div>
-                  <button className="search-book-btn" onClick={() => handleSelect(v)}>
-                    Book →
+                  <div className="search-empty-title">No vehicles found</div>
+                  <div className="search-empty-sub">
+                    No {meta?.label || "vehicle"} drivers available near your pickup right now.
+                  </div>
+                  <button
+                    className="search-retry-btn"
+                    onClick={() => fetchNearbyVehicles(pickupLat, pickupLng)}
+                  >
+                    <RefreshCw size={14} /> Retry Search
                   </button>
-                </div>
-              </div>
-            ))}
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* Vehicle grid */}
+            <div className="search-vehicle-grid">
+              {vehicles.map((v, i) => (
+                <motion.div
+                  key={v._id}
+                  initial={{ opacity: 0, y: 24 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.06, duration: 0.38, ease: [0.22, 1, 0.36, 1] }}
+                >
+                  <VehicleBookingCard
+                    vehicle={v}
+                    distanceKm={km ?? undefined}
+                    isRecommended={i === 0}
+                    onBook={() => {
+                      const url = new URLSearchParams({
+                        pickup, drop,
+                        vehicle:      v.type,
+                        driverId:     v.owner,
+                        vehicleId:    v._id,
+                        fare:         String(Math.round(v.baseFare + (km ?? 0) * v.pricePerKm)),
+                        pickupLat:    String(pickupLat),
+                        pickupLng:    String(pickupLng),
+                        dropLat:      params.get("dropLat")  || "",
+                        dropLng:      params.get("dropLng")  || "",
+                        mobileNumber,
+                      });
+                      router.push(`/checkout?${url.toString()}`);
+                    }}
+                  />
+                </motion.div>
+              ))}
+            </div>
+
           </div>
-        </div>
+        </motion.div>
       </div>
     </>
-  )
+  );
 }

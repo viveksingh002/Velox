@@ -445,7 +445,9 @@ export default function Hero({ onSendPrompt, onOpenModal }: HeroProps) {
 
           {/* CTA Buttons */}
           <div className="hero-actions">
-            <button className="btn-glow" onClick={() => handleSendPrompt('Show me available vehicles to book')}>
+            <button className="btn-glow" onClick={() => {
+  document.getElementById('fleet')?.scrollIntoView({ behavior: 'smooth' })
+}}>
               {/* Car icon using Unicode / inline SVG */}
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M5 17H3a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h2"/>
