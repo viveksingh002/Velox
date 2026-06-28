@@ -267,7 +267,7 @@ export default function Navbar() {
                       </Link>
 
                       {/* Become a Partner */}
-                      <Link href="/partner" className="nav-dropdown-item partner" onClick={() => setDropdownOpen(false)}>
+                      <Link href="/partner/onboard" className="nav-dropdown-item partner" onClick={() => setDropdownOpen(false)}>
                         <span style={{ display: "flex", alignItems: "center", gap: "4px", flexShrink: 0 }}>
                           {/* Bike circle */}
                           <span style={{ width: "24px", height: "24px", borderRadius: "50%", background: "rgba(255,255,255,0.12)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
@@ -370,7 +370,7 @@ export default function Navbar() {
                 ))}
                 {user && (
                   <li>
-                    <Link href="/partner" onClick={() => setMenuOpen(false)} className="flex items-center justify-between px-6 py-4 text-[14px] text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition-colors">
+                    <Link href="/partner/onboard" onClick={() => setMenuOpen(false)} className="flex items-center justify-between px-6 py-4 text-[14px] text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition-colors">
                       Become a Partner
                       <span className="text-slate-400 text-xs">›</span>
                     </Link>
