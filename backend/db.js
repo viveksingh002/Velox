@@ -1,5 +1,6 @@
+// backend/db.js
 const mongoose = require("mongoose");
-
+ 
 const connectDB = async () => {
   try {
     await mongoose.connect(process.env.MONGO_URL);
@@ -8,5 +9,6 @@ const connectDB = async () => {
     console.log("DB Error:", err.message);
   }
 };
-
+ 
 module.exports = connectDB;
+ 

@@ -17,6 +17,7 @@ export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [isPartner, setIsPartner] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -27,15 +28,30 @@ export default function Navbar() {
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
-      setUser(data.user ?? null);
+      const u = data.user ?? null;
+      setUser(u);
+      if (u) checkPartnerStatus(u.id);
     });
 
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
+      const u = session?.user ?? null;
+      setUser(u);
+      if (u) checkPartnerStatus(u.id);
+      else setIsPartner(false);
     });
 
     return () => listener.subscription.unsubscribe();
   }, []);
+
+  // Check if this specific user has already registered as a partner
+  const checkPartnerStatus = async (userId: string) => {
+    const { data } = await supabase
+      .from("vendors")
+      .select("id")
+      .eq("user_id", userId)
+      .maybeSingle();
+    setIsPartner(!!data);
+  };
 
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
@@ -50,19 +66,26 @@ export default function Navbar() {
   const handleLogout = async () => {
     await supabase.auth.signOut();
     setUser(null);
+    setIsPartner(false);
     setDropdownOpen(false);
     window.location.href = "/";
+  };
+
+  const handleBecomePartner = () => {
+    // Per-user check — isPartner is based on logged-in user's ID
+    if (isPartner) {
+      window.location.href = "/partner/dashboard";
+    } else {
+      window.location.href = "/partner/onboard/vehicle";
+    }
+    setDropdownOpen(false);
+    setMenuOpen(false);
   };
 
   const getInitials = () => {
     const name = user?.user_metadata?.full_name || user?.email || "";
     if (user?.user_metadata?.full_name) {
-      return user.user_metadata.full_name
-        .split(" ")
-        .map((w: string) => w[0])
-        .join("")
-        .toUpperCase()
-        .slice(0, 2);
+      return user.user_metadata.full_name.split(" ").map((w: string) => w[0]).join("").toUpperCase().slice(0, 2);
     }
     return name[0]?.toUpperCase() || "U";
   };
@@ -75,151 +98,77 @@ export default function Navbar() {
     <>
       <style>{`
         .nav-avatar {
-          width: 36px;
-          height: 36px;
-          border-radius: 50%;
+          width: 36px; height: 36px; border-radius: 50%;
           background: linear-gradient(135deg, #0071e3, #5ac8fa);
-          color: #fff;
-          font-size: 13px;
-          font-weight: 700;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          cursor: pointer;
-          border: 2px solid rgba(0,113,227,0.4);
-          transition: all 0.2s;
-          flex-shrink: 0;
-          font-family: 'Inter', sans-serif;
-          user-select: none;
+          color: #fff; font-size: 13px; font-weight: 700;
+          display: flex; align-items: center; justify-content: center;
+          cursor: pointer; border: 2px solid rgba(0,113,227,0.4);
+          transition: all 0.2s; flex-shrink: 0;
+          font-family: 'Inter', sans-serif; user-select: none;
         }
         .nav-avatar:hover {
           border-color: rgba(0,113,227,0.8);
           box-shadow: 0 0 16px rgba(0,113,227,0.4);
           transform: scale(1.05);
         }
-
         .nav-dropdown {
-          position: absolute;
-          top: calc(100% + 12px);
-          right: 0;
-          width: 220px;
-          background: rgba(14,14,26,0.98);
-          border: 1px solid rgba(255,255,255,0.1);
-          border-radius: 16px;
+          position: absolute; top: calc(100% + 12px); right: 0;
+          width: 220px; background: rgba(14,14,26,0.98);
+          border: 1px solid rgba(255,255,255,0.1); border-radius: 16px;
           padding: 0.5rem;
           box-shadow: 0 20px 60px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.03);
-          z-index: 9999;
-          backdrop-filter: blur(20px);
+          z-index: 9999; backdrop-filter: blur(20px);
           font-family: 'Inter', sans-serif;
         }
-
         .nav-dropdown-user {
           padding: 0.75rem 0.85rem 0.6rem;
           border-bottom: 1px solid rgba(255,255,255,0.07);
           margin-bottom: 0.4rem;
         }
-
         .nav-dropdown-name {
-          font-size: 14px;
-          font-weight: 600;
-          color: #fff;
-          margin-bottom: 2px;
-          white-space: nowrap;
-          overflow: hidden;
-          text-overflow: ellipsis;
+          font-size: 14px; font-weight: 600; color: #fff; margin-bottom: 2px;
+          white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
         }
-
         .nav-dropdown-role {
-          font-size: 10px;
-          color: rgba(255,255,255,0.3);
-          letter-spacing: 1.5px;
-          font-weight: 600;
-          text-transform: uppercase;
+          font-size: 10px; color: rgba(255,255,255,0.3);
+          letter-spacing: 1.5px; font-weight: 600; text-transform: uppercase;
         }
-
         .nav-dropdown-item {
-          display: flex;
-          align-items: center;
-          gap: 10px;
-          padding: 0.65rem 0.85rem;
-          border-radius: 10px;
-          font-size: 13.5px;
-          color: rgba(255,255,255,0.65);
-          cursor: pointer;
-          transition: all 0.18s;
-          text-decoration: none;
-          font-weight: 500;
-          width: 100%;
-          background: none;
-          border: none;
-          font-family: 'Inter', sans-serif;
-          text-align: left;
+          display: flex; align-items: center; gap: 10px;
+          padding: 0.65rem 0.85rem; border-radius: 10px;
+          font-size: 13.5px; color: rgba(255,255,255,0.65);
+          cursor: pointer; transition: all 0.18s;
+          text-decoration: none; font-weight: 500;
+          width: 100%; background: none; border: none;
+          font-family: 'Inter', sans-serif; text-align: left;
         }
-        .nav-dropdown-item:hover {
-          background: rgba(255,255,255,0.06);
-          color: #fff;
-        }
-        .nav-dropdown-item svg {
-          opacity: 0.5;
-          flex-shrink: 0;
-          transition: opacity 0.18s;
-        }
+        .nav-dropdown-item:hover { background: rgba(255,255,255,0.06); color: #fff; }
+        .nav-dropdown-item svg { opacity: 0.5; flex-shrink: 0; transition: opacity 0.18s; }
         .nav-dropdown-item:hover svg { opacity: 0.9; }
-
-        .nav-dropdown-item.partner {
-          color: rgba(255,255,255,0.65);
-          position: relative;
-        }
-        .nav-dropdown-item.partner:hover {
-          background: rgba(255,255,255,0.06);
-          color: #fff;
-        }
-        .nav-dropdown-item.partner .partner-arrow {
-          margin-left: auto;
-          opacity: 0.3;
-          font-size: 12px;
-        }
-        .nav-dropdown-item.partner:hover .partner-arrow {
-          opacity: 0.7;
-        }
-
+        .nav-dropdown-item.partner { color: rgba(255,255,255,0.65); position: relative; white-space: nowrap; }
+        .nav-dropdown-item.partner:hover { background: rgba(255,255,255,0.06); color: #fff; }
+        .nav-dropdown-item.partner .partner-arrow { margin-left: auto; opacity: 0.3; font-size: 12px; }
+        .nav-dropdown-item.partner:hover .partner-arrow { opacity: 0.7; }
         .nav-dropdown-item.logout {
-          color: rgba(255,100,100,0.7);
-          margin-top: 0.3rem;
-          border-top: 1px solid rgba(255,255,255,0.06);
-          padding-top: 0.85rem;
+          color: rgba(255,100,100,0.7); margin-top: 0.3rem;
+          border-top: 1px solid rgba(255,255,255,0.06); padding-top: 0.85rem;
         }
-        .nav-dropdown-item.logout:hover {
-          background: rgba(239,68,68,0.08);
-          color: #fca5a5;
-        }
+        .nav-dropdown-item.logout:hover { background: rgba(239,68,68,0.08); color: #fca5a5; }
         .nav-dropdown-item.logout svg { opacity: 0.6; }
         .nav-dropdown-item.logout:hover svg { opacity: 1; }
       `}</style>
 
-      <header
-        style={{ position: "fixed", top: 0, left: 0, right: 0, zIndex: 9999 }}
-        className="px-4 pt-4"
-      >
+      <header style={{ position: "fixed", top: 0, left: 0, right: 0, zIndex: 9999 }} className="px-4 pt-4">
         <motion.nav
           initial={{ opacity: 0, y: -16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-          className={`
-            mx-auto max-w-6xl flex items-center justify-between
-            px-6 py-3 rounded-2xl border transition-all duration-300
-            ${scrolled
-              ? "bg-white/70 border-white/60 shadow-[0_8px_32px_rgba(0,0,0,0.08)] backdrop-blur-xl"
-              : "bg-white/40 border-white/30 backdrop-blur-md"
-            }
-          `}
+          className={`mx-auto max-w-6xl flex items-center justify-between px-6 py-3 rounded-2xl border transition-all duration-300 ${
+            scrolled ? "bg-white/70 border-white/60 shadow-[0_8px_32px_rgba(0,0,0,0.08)] backdrop-blur-xl" : "bg-white/40 border-white/30 backdrop-blur-md"
+          }`}
         >
-          {/* Logo */}
-          <Link href="/" className="text-[17px] font-bold tracking-[-0.5px] text-slate-900 select-none italic">
-            Vëlox
-          </Link>
+          <Link href="/" className="text-[17px] font-bold tracking-[-0.5px] text-slate-900 select-none italic">Vëlox</Link>
 
-          {/* Desktop Links */}
           <ul className="hidden md:flex items-center gap-8 absolute left-1/2 -translate-x-1/2">
             {navLinks.map((link) => (
               <li key={link.href}>
@@ -230,15 +179,10 @@ export default function Navbar() {
             ))}
           </ul>
 
-          {/* Right side */}
           <div className="hidden md:flex items-center gap-2.5">
             {user ? (
               <div className="relative" ref={dropdownRef}>
-                <div
-                  className="nav-avatar"
-                  onClick={() => setDropdownOpen((p) => !p)}
-                  title={getDisplayName()}
-                >
+                <div className="nav-avatar" onClick={() => setDropdownOpen((p) => !p)} title={getDisplayName()}>
                   {getInitials()}
                 </div>
 
@@ -251,73 +195,45 @@ export default function Navbar() {
                       exit={{ opacity: 0, y: -8, scale: 0.96 }}
                       transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
                     >
-                      {/* User info */}
                       <div className="nav-dropdown-user">
                         <div className="nav-dropdown-name">{getDisplayName()}</div>
-                        <div className="nav-dropdown-role">User</div>
+                        <div className="nav-dropdown-role">{isPartner ? "Partner" : "User"}</div>
                       </div>
 
-                      {/* My Bookings */}
                       <Link href="/dashboard" className="nav-dropdown-item" onClick={() => setDropdownOpen(false)}>
                         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <rect x="3" y="4" width="18" height="18" rx="2"/>
-                          <path d="M16 2v4M8 2v4M3 10h18"/>
+                          <rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>
                         </svg>
                         My Bookings
                       </Link>
 
-                      {/* Become a Partner */}
-                      <Link href="/partner/onboard" className="nav-dropdown-item partner" onClick={() => setDropdownOpen(false)}>
-                        <span style={{ display: "flex", alignItems: "center", gap: "4px", flexShrink: 0 }}>
-                          {/* Bike circle */}
-                          <span style={{ width: "24px", height: "24px", borderRadius: "50%", background: "rgba(255,255,255,0.12)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{opacity:0.85}}>
-                              <circle cx="5.5" cy="17.5" r="3.5"/>
-                              <circle cx="18.5" cy="17.5" r="3.5"/>
-                              <path d="M15 6a1 1 0 0 0-1-1h-1"/>
-                              <path d="M15 6l3 4.5"/>
-                              <path d="M9 6l1.5 5.5L5.5 17"/>
-                              <path d="M9 6h6"/>
-                              <path d="M12 11.5L18.5 17"/>
-                            </svg>
-                          </span>
-                          {/* Car circle */}
-                          <span style={{ width: "24px", height: "24px", borderRadius: "50%", background: "rgba(255,255,255,0.12)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{opacity:0.85}}>
-                              <path d="M5 17H3a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h1l3-4h10l3 4h1a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2h-2"/>
-                              <circle cx="7" cy="17" r="2"/>
-                              <circle cx="17" cy="17" r="2"/>
-                            </svg>
-                          </span>
-                          {/* Truck circle */}
-                          <span style={{ width: "24px", height: "24px", borderRadius: "50%", background: "rgba(255,255,255,0.12)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{opacity:0.85}}>
-                              <rect x="1" y="3" width="15" height="13" rx="1"/>
-                              <path d="M16 8h4l3 5v3h-7V8z"/>
-                              <circle cx="5.5" cy="18.5" r="2.5"/>
-                              <circle cx="18.5" cy="18.5" r="2.5"/>
-                            </svg>
-                          </span>
+                      <button className="nav-dropdown-item partner" onClick={handleBecomePartner}>
+                        <span style={{ display: "flex", alignItems: "center", flexShrink: 0, position: "relative", width: "52px", height: "24px" }}>
+                          {[
+                            <svg key="truck" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{opacity:0.85}}><rect x="1" y="3" width="15" height="13" rx="1"/><path d="M16 8h4l3 5v3h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>,
+                            <svg key="car" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{opacity:0.85}}><path d="M5 17H3a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h1l3-4h10l3 4h1a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2h-2"/><circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/></svg>,
+                            <svg key="bike" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{opacity:0.85}}><circle cx="5.5" cy="17.5" r="3.5"/><circle cx="18.5" cy="17.5" r="3.5"/><path d="M15 6a1 1 0 0 0-1-1h-1"/><path d="M15 6l3 4.5"/><path d="M9 6l1.5 5.5L5.5 17"/><path d="M9 6h6"/><path d="M12 11.5L18.5 17"/></svg>,
+                          ].map((icon, i) => (
+                            <span key={i} style={{ width: "22px", height: "22px", borderRadius: "50%", background: "rgba(255,255,255,0.12)", border: "1.5px solid rgba(255,255,255,0.08)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, position: "absolute", left: `${i * 15}px`, zIndex: i }}>
+                              {icon}
+                            </span>
+                          ))}
                         </span>
-                        Become a Partner
+                        {isPartner ? "Partner Dashboard" : "Become a Partner"}
                         <span className="partner-arrow">›</span>
-                      </Link>
+                      </button>
 
-                      {/* Profile */}
                       <Link href="/profile" className="nav-dropdown-item" onClick={() => setDropdownOpen(false)}>
                         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <circle cx="12" cy="8" r="4"/>
-                          <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
+                          <circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
                         </svg>
                         Profile
                       </Link>
 
-                      {/* Logout */}
                       <button className="nav-dropdown-item logout" onClick={handleLogout}>
                         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                           <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
-                          <polyline points="16 17 21 12 16 7"/>
-                          <line x1="21" y1="12" x2="9" y2="12"/>
+                          <polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
                         </svg>
                         Logout
                       </button>
@@ -327,29 +243,19 @@ export default function Navbar() {
               </div>
             ) : (
               <>
-                <Link href="/signin" className="text-[13.5px] font-medium text-slate-700 px-4 py-2 rounded-lg hover:bg-white/80 transition-all duration-200">
-                  Sign in
-                </Link>
-                <Link href="/signin" className="text-[13.5px] font-medium text-white bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg transition-all duration-200 shadow-[0_1px_3px_rgba(37,99,235,0.35)]">
-                  Book now
-                </Link>
+                <Link href="/signin" className="text-[13.5px] font-medium text-slate-700 px-4 py-2 rounded-lg hover:bg-white/80 transition-all duration-200">Sign in</Link>
+                <Link href="/signin" className="text-[13.5px] font-medium text-white bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg transition-all duration-200 shadow-[0_1px_3px_rgba(37,99,235,0.35)]">Book now</Link>
               </>
             )}
           </div>
 
-          {/* Hamburger */}
-          <button
-            onClick={() => setMenuOpen((prev) => !prev)}
-            className="md:hidden flex flex-col gap-[5px] p-1.5"
-            aria-label="Toggle menu"
-          >
+          <button onClick={() => setMenuOpen((prev) => !prev)} className="md:hidden flex flex-col gap-[5px] p-1.5" aria-label="Toggle menu">
             <motion.span animate={menuOpen ? { rotate: 45, y: 7 } : { rotate: 0, y: 0 }} transition={{ duration: 0.22 }} className="block w-5 h-[1.5px] bg-slate-800 rounded-full origin-center"/>
             <motion.span animate={menuOpen ? { opacity: 0, scaleX: 0 } : { opacity: 1, scaleX: 1 }} transition={{ duration: 0.18 }} className="block w-5 h-[1.5px] bg-slate-800 rounded-full"/>
             <motion.span animate={menuOpen ? { rotate: -45, y: -7 } : { rotate: 0, y: 0 }} transition={{ duration: 0.22 }} className="block w-5 h-[1.5px] bg-slate-800 rounded-full origin-center"/>
           </button>
         </motion.nav>
 
-        {/* Mobile Menu */}
         <AnimatePresence>
           {menuOpen && (
             <motion.div
@@ -370,26 +276,20 @@ export default function Navbar() {
                 ))}
                 {user && (
                   <li>
-                    <Link href="/partner/onboard" onClick={() => setMenuOpen(false)} className="flex items-center justify-between px-6 py-4 text-[14px] text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition-colors">
-                      Become a Partner
+                    <button onClick={handleBecomePartner} className="w-full flex items-center justify-between px-6 py-4 text-[14px] text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition-colors">
+                      {isPartner ? "Partner Dashboard" : "Become a Partner"}
                       <span className="text-slate-400 text-xs">›</span>
-                    </Link>
+                    </button>
                   </li>
                 )}
               </ul>
               <div className="flex gap-3 px-6 py-4 border-t border-slate-100">
                 {user ? (
-                  <button onClick={handleLogout} className="flex-1 text-center text-[13.5px] font-medium text-red-500 py-2.5 rounded-xl border border-red-100 hover:bg-red-50 transition-all">
-                    Logout
-                  </button>
+                  <button onClick={handleLogout} className="flex-1 text-center text-[13.5px] font-medium text-red-500 py-2.5 rounded-xl border border-red-100 hover:bg-red-50 transition-all">Logout</button>
                 ) : (
                   <>
-                    <Link href="/signin" className="flex-1 text-center text-[13.5px] font-medium text-slate-700 py-2.5 rounded-xl border border-slate-200 hover:bg-slate-50 transition-all">
-                      Sign in
-                    </Link>
-                    <Link href="/signin" className="flex-1 text-center text-[13.5px] font-medium text-white bg-blue-600 hover:bg-blue-700 py-2.5 rounded-xl transition-all shadow-[0_1px_3px_rgba(37,99,235,0.35)]">
-                      Book now
-                    </Link>
+                    <Link href="/signin" className="flex-1 text-center text-[13.5px] font-medium text-slate-700 py-2.5 rounded-xl border border-slate-200 hover:bg-slate-50 transition-all">Sign in</Link>
+                    <Link href="/signin" className="flex-1 text-center text-[13.5px] font-medium text-white bg-blue-600 hover:bg-blue-700 py-2.5 rounded-xl transition-all shadow-[0_1px_3px_rgba(37,99,235,0.35)]">Book now</Link>
                   </>
                 )}
               </div>
