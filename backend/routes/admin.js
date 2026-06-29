@@ -17,7 +17,7 @@ router.get("/vendors/video-kyc/pending", async (req, res) => {
 
 router.patch("/vendors/video-kyc/start/:id", async (req, res) => {
   try {
-    const roomId = "room_${Date.now()}";
+    const roomId = `room_${Date.now()}`;
     const vendor = await Vendor.findByIdAndUpdate(
       req.params.id,
       { videoKycStatus: "in_progress", videoKycRoomId: roomId },
