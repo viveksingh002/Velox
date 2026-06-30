@@ -19,7 +19,7 @@ export default function AdminVehicleReviewPage() {
   useEffect(() => {
     async function load() {
       try {
-        const res = await axios.get(`/api/admin/vehicles/${id}`);
+        const res = await axios.get(`http://localhost:5000/api/admin/vehicles/${id}`);
         setData(res.data.vehicle);
       } catch (err) { console.error(err); }
       finally { setLoading(false); }
@@ -28,14 +28,14 @@ export default function AdminVehicleReviewPage() {
   }, [id]);
 
   const approve = async () => {
-    try { setActionLoading(true); await axios.post(`/api/admin/vehicles/${id}/approve`); router.push("/admin/dashboard"); }
+    try { setActionLoading(true); await axios.post(`http://localhost:5000/api/admin/vehicles/${id}/approve`); router.push("/admin/dashboard"); }
     catch (err) { console.error(err); }
     finally { setActionLoading(false); setShowApprove(false); }
   };
 
   const reject = async () => {
     if (!rejectReason.trim()) return;
-    try { setActionLoading(true); await axios.post(`/api/admin/vehicles/${id}/reject`, { reason: rejectReason }); router.push("/admin/dashboard"); }
+    try { setActionLoading(true); await axios.post(`http://localhost:5000/api/admin/vehicles/${id}/reject`, { reason: rejectReason }); router.push("/admin/dashboard"); }
     catch (err) { console.error(err); }
     finally { setActionLoading(false); setShowReject(false); }
   };
@@ -93,7 +93,6 @@ export default function AdminVehicleReviewPage() {
           display: grid; grid-template-columns: 1fr 400px; gap: 2rem; align-items: start;
         }
 
-        /* Vehicle image */
         .aveh-img-wrap {
           border-radius: 24px; overflow: hidden;
           background: rgba(255,255,255,0.03);
@@ -105,7 +104,6 @@ export default function AdminVehicleReviewPage() {
         .aveh-img-placeholder { color: rgba(255,255,255,0.1); display: flex; flex-direction: column; align-items: center; gap: 12px; }
         .aveh-img-placeholder p { font-size: 13px; color: rgba(255,255,255,0.2); }
 
-        /* Cards */
         .aveh-card {
           background: rgba(255,255,255,0.03);
           border: 1px solid rgba(255,255,255,0.07);
@@ -130,7 +128,6 @@ export default function AdminVehicleReviewPage() {
         .aveh-info-label { color: rgba(255,255,255,0.35); }
         .aveh-info-value { color: rgba(255,255,255,0.85); font-weight: 600; }
 
-        /* Decision */
         .aveh-decision {
           background: rgba(255,255,255,0.03);
           border: 1px solid rgba(255,255,255,0.07);
@@ -159,7 +156,6 @@ export default function AdminVehicleReviewPage() {
         }
         .aveh-reject-btn:hover { background: rgba(239,68,68,0.08); border-color: rgba(239,68,68,0.25); color: #fca5a5; }
 
-        /* Modal */
         .aveh-overlay {
           position: fixed; inset: 0; z-index: 999;
           background: rgba(0,0,0,0.7); backdrop-filter: blur(12px);
@@ -211,7 +207,6 @@ export default function AdminVehicleReviewPage() {
       `}</style>
 
       <div className="aveh-root">
-        {/* Header */}
         <header className="aveh-header">
           <button className="aveh-back" onClick={() => router.back()}><ArrowLeft size={16} /></button>
           <div style={{ flex: 1 }}>
@@ -221,9 +216,7 @@ export default function AdminVehicleReviewPage() {
           <VehicleStatusBadge status={data.status} />
         </header>
 
-        {/* Main */}
         <main className="aveh-main">
-          {/* Left — Image */}
           <motion.div className="aveh-img-wrap" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
             {data.imageUrl
               ? <img src={data.imageUrl} alt="Vehicle" />
@@ -231,7 +224,6 @@ export default function AdminVehicleReviewPage() {
             }
           </motion.div>
 
-          {/* Right — Details */}
           <div>
             <motion.div className="aveh-card" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}>
               <div className="aveh-card-title"><Truck size={16} /> Vehicle Details</div>
@@ -260,7 +252,6 @@ export default function AdminVehicleReviewPage() {
           </div>
         </main>
 
-        {/* Approve Modal */}
         <AnimatePresence>
           {showApprove && (
             <motion.div className="aveh-overlay" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
@@ -279,7 +270,6 @@ export default function AdminVehicleReviewPage() {
           )}
         </AnimatePresence>
 
-        {/* Reject Modal */}
         <AnimatePresence>
           {showReject && (
             <motion.div className="aveh-overlay" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
