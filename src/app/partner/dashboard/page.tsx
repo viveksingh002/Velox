@@ -286,6 +286,8 @@ function StatusBanner({
   videoKycRoomId,
   onRetry,
   onSetPricing,
+  showLiveBanner,
+  router,
 }: {
   status: VendorStatus;
   videoKycStatus: VideoKycStatus;
@@ -295,6 +297,8 @@ function StatusBanner({
   videoKycRoomId: string | null;
   onRetry: () => void;
   onSetPricing: () => void;
+  showLiveBanner: boolean;
+  router: ReturnType<typeof useRouter>;
 }) {
   const handleJoinCall = () => {
     if (!videoKycRoomId) return;
@@ -428,14 +432,30 @@ function StatusBanner({
     );
   }
 
-  return (
-    <div style={{ background: "#fff", borderRadius: 16, border: "1px solid #e5e7eb", padding: "20px 24px", marginBottom: 20 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
-        <div style={{ width: 44, height: 44, borderRadius: 12, background: "#16a34a", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 20 }}>✅</div>
-        <div style={{ flex: 1, minWidth: 160 }}>
-          <p style={{ fontSize: 15, fontWeight: 700, color: "#111827", marginBottom: 2 }}>Pricing Approved!</p>
-          <p style={{ fontSize: 13, color: "#6b7280" }}>Final review is Completed. You'll go live shortly.</p>
+  // ── Pricing approved → final review pending OR live ──
+  if (!showLiveBanner) {
+    return (
+      <div style={{ background: "#fff", borderRadius: 16, border: "1px solid #e5e7eb", padding: "20px 24px", marginBottom: 20 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
+          <div style={{ width: 44, height: 44, borderRadius: 12, background: "#16a34a", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 20 }}>✅</div>
+          <div style={{ flex: 1, minWidth: 160 }}>
+            <p style={{ fontSize: 15, fontWeight: 700, color: "#111827", marginBottom: 2 }}>Pricing Approved!</p>
+            <p style={{ fontSize: 13, color: "#6b7280" }}>Final review is Completed. You'll go live shortly.</p>
+          </div>
         </div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ background: "#111827", borderRadius: 16, padding: "24px", marginBottom: 20 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 16 }}>
+        <div>
+          <p style={{ fontSize: 17, fontWeight: 700, color: "#fff", marginBottom: 4 }}>🚀 You're Live</p>
+        </div>
+        <button onClick={() => router.push("/partner/active-ride")} style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 20px", background: "#fff", color: "#111827", borderRadius: 10, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", whiteSpace: "nowrap" }}>
+          Go to Orders →
+        </button>
       </div>
     </div>
   );
@@ -546,6 +566,7 @@ export default function PartnerDashboard() {
   const [loading,               setLoading]               = useState(true);
   const [apiDown,               setApiDown]               = useState(false);
   const [showPricingModal,      setShowPricingModal]      = useState(false);
+  const [showLiveBanner,        setShowLiveBanner]        = useState(false);
 
   const fetchStatus = async () => {
     const email = localStorage.getItem("velox_vendor_email");
@@ -580,6 +601,16 @@ export default function PartnerDashboard() {
     const interval = setInterval(fetchStatus, 5000);
     return () => clearInterval(interval);
   }, []);
+
+  // Pricing approved → show "Pricing Approved!" for 5s, then auto-switch to "You're Live"
+  useEffect(() => {
+    if (pricingStatus === "approved") {
+      const timer = setTimeout(() => setShowLiveBanner(true), 5000);
+      return () => clearTimeout(timer);
+    } else {
+      setShowLiveBanner(false);
+    }
+  }, [pricingStatus]);
 
   const handleRetry = () => {
     localStorage.removeItem("velox_vendor_email");
@@ -622,6 +653,8 @@ export default function PartnerDashboard() {
           videoKycRoomId={videoKycRoomId}
           onRetry={handleRetry}
           onSetPricing={() => setShowPricingModal(true)}
+          showLiveBanner={showLiveBanner}
+          router={router}
         />
 
         <EarningsChart data={EARNINGS_DATA} />
