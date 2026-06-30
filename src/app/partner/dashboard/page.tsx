@@ -434,7 +434,7 @@ function StatusBanner({
         <div style={{ width: 44, height: 44, borderRadius: 12, background: "#16a34a", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 20 }}>✅</div>
         <div style={{ flex: 1, minWidth: 160 }}>
           <p style={{ fontSize: 15, fontWeight: 700, color: "#111827", marginBottom: 2 }}>Pricing Approved!</p>
-          <p style={{ fontSize: 13, color: "#6b7280" }}>Final review is underway. You'll go live shortly.</p>
+          <p style={{ fontSize: 13, color: "#6b7280" }}>Final review is Completed. You'll go live shortly.</p>
         </div>
       </div>
     </div>
