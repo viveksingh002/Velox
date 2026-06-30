@@ -527,9 +527,10 @@ function getStep(status: VendorStatus, videoKycStatus: VideoKycStatus, videoKycR
   if (status !== "approved") return 4;
   if (videoKycStatus !== "completed") return 5;
   if (videoKycResult === "rejected") return 5;
-  if (!pricingStatus || pricingStatus === "pending") return 6;
-  if (pricingStatus === "submitted" || pricingStatus === "rejected") return 6;
-  return 7;
+  if (!pricingStatus || pricingStatus === "pending") return 6;   
+  if (pricingStatus === "rejected") return 6;                     
+  if (pricingStatus === "submitted") return 7;                    
+  return 8;                                                       
 }
 
 export default function PartnerDashboard() {
