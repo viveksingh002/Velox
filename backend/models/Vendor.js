@@ -24,6 +24,14 @@ const vendorSchema = new mongoose.Schema({
   },
   videoKycStatus: { type: String, enum: ["pending","in_progress","completed"], default: "pending" },
   videoKycRoomId: { type: String, default: null },
+  videoKycResult: { type: String, enum: ["approved","rejected",null], default: null },
+
+  baseFare:           { type: Number, default: 0 },
+  pricePerKm:         { type: Number, default: 0 },
+  waitingCharge:       { type: Number, default: 0 },
+  vehicleImage:        { type: String, default: "" }, // base64 string
+  pricingStatus:       { type: String, enum: ["pending","submitted","approved","rejected",null], default: null },
+  pricingRejectReason: { type: String, default: "" },
 }, { timestamps: true });
 
 module.exports = mongoose.models.Vendor || mongoose.model("Vendor", vendorSchema);

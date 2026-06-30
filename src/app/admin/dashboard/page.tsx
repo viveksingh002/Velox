@@ -425,10 +425,17 @@ const KYC_STATUS: any = {
 };
 
 function ReviewList({ data, type, router }: any) {
-  const startKyc = async (vendorId: string) => {
+  const startKyc = async (vendorId: string, existingRoomId?: string) => {
+    // Agar room already bana hua hai (in_progress), seedha usi room mein jao
+    if (existingRoomId) {
+      router.push(`/video-kyc/${existingRoomId}?role=admin&vendorId=${vendorId}`);
+      return;
+    }
     try {
       const res = await axios.patch(`/api/admin/vendors/video-kyc/start/${vendorId}`);
-      if (res.data.roomId) router.push(`/video-kyc/${res.data.roomId}`);
+      if (res.data.roomId) {
+        router.push(`/video-kyc/${res.data.roomId}?role=admin&vendorId=${vendorId}`);
+      }
     } catch (err) { console.error(err); }
   };
 
@@ -474,15 +481,9 @@ function ReviewList({ data, type, router }: any) {
             </div>
 
             {type === 'kyc' ? (
-              item.videoKycStatus === 'in_progress' ? (
-                <button className="ad-review-btn" onClick={() => router.push(`/video-kyc/${item.videoKycRoomId}`)}>
-                  <Video size={13} /> Join Call
-                </button>
-              ) : (
-                <button className="ad-kyc-btn" onClick={() => startKyc(item._id)}>
-                  <Video size={13} /> Start KYC
-                </button>
-              )
+              <button className="ad-kyc-btn" onClick={() => startKyc(item._id, item.videoKycStatus === 'in_progress' ? item.videoKycRoomId : undefined)}>
+                <Video size={13} /> {item.videoKycStatus === 'in_progress' ? 'Resume KYC' : 'Start KYC'}
+              </button>
             ) : (
               <button className="ad-review-btn" onClick={() => router.push(type === 'vendor' ? `/admin/vendors/${item._id}` : `/admin/vehicles/${item._id}`)}>
                 Review <ArrowRight size={13} />
