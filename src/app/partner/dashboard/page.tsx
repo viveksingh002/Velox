@@ -602,7 +602,7 @@ export default function PartnerDashboard() {
     return () => clearInterval(interval);
   }, []);
 
-  // Pricing approved → show "Pricing Approved!" for 5s, then auto-switch to "You're Live"
+  // Pricing approved → show "Pricing Approved!" for 3s, then auto-switch to "You're Live"
   useEffect(() => {
     if (pricingStatus === "approved") {
       const timer = setTimeout(() => setShowLiveBanner(true), 3000);
