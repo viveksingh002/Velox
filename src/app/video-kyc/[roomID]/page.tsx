@@ -1,23 +1,23 @@
 'use client'
-
+ 
 import { useEffect, useRef, useState } from 'react'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { CheckCircle, XCircle, Mic, MicOff, Video, VideoOff, Phone, ArrowLeft, Shield } from 'lucide-react'
 import axios from 'axios'
-
+ 
 export default function VideoKYCPage() {
   const { roomID } = useParams()
   const searchParams = useSearchParams()
   const router = useRouter()
-
-  const role = searchParams.get('role') || 'vendor'
+ 
+  const role = searchParams.get('role') || 'vendor' // 'admin' or 'vendor'
   const vendorId = searchParams.get('vendorId') || ''
-
+ 
   const containerRef = useRef<HTMLDivElement>(null)
   const zegoRef = useRef<any>(null)
   const hasInitialized = useRef(false)
   const destroyingRef = useRef(false)
-
+ 
   const [joined, setJoined] = useState(false)
   const [micOn, setMicOn] = useState(true)
   const [camOn, setCamOn] = useState(true)
@@ -27,92 +27,74 @@ export default function VideoKYCPage() {
   const [showRejectModal, setShowRejectModal] = useState(false)
   const [rejectReason, setRejectReason] = useState('')
   const [done, setDone] = useState<'approved' | 'rejected' | null>(null)
-
+ 
   const APP_ID = Number(process.env.NEXT_PUBLIC_ZEGO_APP_ID)
   const SERVER_SECRET = process.env.NEXT_PUBLIC_ZEGO_SERVER_SECRET || ''
-
-  const safeDestroyZego = () => {
+ 
+  const safeDestroyZego = async () => {
     if (!zegoRef.current) return
-    if (destroyingRef.current) return
+    if (destroyingRef.current) return // guard: never call destroy() twice concurrently
     destroyingRef.current = true
-
+ 
     const z = zegoRef.current
     zegoRef.current = null
-
-    // ROOT CAUSE: Zego SDK calls `this.reporter.createSpan()` inside an
-    // internal async cleanup callback triggered by destroy(). By the time
-    // that callback runs, `this.reporter` is already null → TypeError.
-    //
-    // WHY try/catch + addEventListener('error') alone don't work:
-    //   • The throw happens AFTER destroy() already returned, so a
-    //     try/catch around the call-site cannot catch it.
-    //   • Next.js dev overlay intercepts window 'error' events BEFORE
-    //     any addEventListener bubble/capture listener fires, so those
-    //     listeners never get a chance to call preventDefault().
-    //
-    // ONLY RELIABLE FIX: window.onerror returning `true` suppresses the
-    // error entirely — it runs before the Next.js overlay and before any
-    // event listeners. We restore the original handler after 2 s.
-
-    const isZegoSpanError = (msg: unknown) =>
-      String(msg ?? '').includes('createSpan')
-
-    // 1. window.onerror — fires BEFORE Next.js dev overlay
-    const prevOnError = window.onerror
-    window.onerror = (msg, src, line, col, err) => {
-      if (isZegoSpanError(msg) || isZegoSpanError(err?.message)) return true
-      return prevOnError ? prevOnError.call(window, msg, src, line, col, err) : false
-    }
-
-    // 2. capture-phase listener — fires before bubble, extra safety net
-    const suppressError = (e: ErrorEvent) => {
-      if (isZegoSpanError(e?.message)) {
+ 
+    // Zego SDK has an internal bug — destroy() sometimes throws a
+    // "createSpan" error from a detached internal telemetry call that is
+    // NOT part of the promise chain returned by destroy(). Because it's
+    // truly detached, it can surface as a browser `error` event in some
+    // cases and as an `unhandledrejection` in others — a regular
+    // try/catch around `await z.destroy()` cannot catch either case.
+    // So we suppress both, for a slightly longer window, while destroy()
+    // finishes cleaning up internally.
+    const suppressZegoError = (e: ErrorEvent) => {
+      if (e?.message?.includes('createSpan')) {
         e.preventDefault()
         e.stopPropagation()
       }
     }
-
-    // 3. unhandledrejection — for async promise rejection path
-    const suppressRejection = (e: PromiseRejectionEvent) => {
-      if (isZegoSpanError(e?.reason?.message ?? e?.reason)) e.preventDefault()
+    const suppressZegoRejection = (e: PromiseRejectionEvent) => {
+      const msg = e?.reason?.message || String(e?.reason || '')
+      if (msg.includes('createSpan')) {
+        e.preventDefault()
+      }
     }
-
-    window.addEventListener('error', suppressError, true) // capture = true
-    window.addEventListener('unhandledrejection', suppressRejection)
-
-    // Call destroy — sync throw caught here; async throw caught by handlers above
-    try { z.destroy?.() } catch { /* swallow any sync throw */ }
-
-    // Restore everything after 2 s (well after all async cleanup finishes)
-    setTimeout(() => {
-      window.onerror = prevOnError
-      window.removeEventListener('error', suppressError, true)
-      window.removeEventListener('unhandledrejection', suppressRejection)
-      destroyingRef.current = false
-    }, 2000)
+    window.addEventListener('error', suppressZegoError)
+    window.addEventListener('unhandledrejection', suppressZegoRejection)
+ 
+    try {
+      await Promise.resolve(z.destroy?.())
+    } catch (e) {
+      // ignore — handled by listeners above too
+    } finally {
+      setTimeout(() => {
+        window.removeEventListener('error', suppressZegoError)
+        window.removeEventListener('unhandledrejection', suppressZegoRejection)
+        destroyingRef.current = false
+      }, 1500)
+    }
   }
-
+ 
   useEffect(() => {
     if (!containerRef.current) return
-
+ 
     let cancelled = false
-
+ 
     const init = async () => {
+      // Strict-mode double mount guard: wait for any pending destroy first
       if (hasInitialized.current) {
-        safeDestroyZego()
-        // small wait to let previous destroy settle
-        await new Promise(r => setTimeout(r, 100))
+        await safeDestroyZego()
       }
       hasInitialized.current = true
-
+ 
       try {
         const { ZegoUIKitPrebuilt } = await import('@zegocloud/zego-uikit-prebuilt')
-
+ 
         if (cancelled) return
-
+ 
         const userID = role === 'admin' ? `admin_${Date.now()}` : `vendor_${Date.now()}`
         const userName = role === 'admin' ? 'Admin' : 'Vendor'
-
+ 
         const kitToken = ZegoUIKitPrebuilt.generateKitTokenForTest(
           APP_ID,
           SERVER_SECRET,
@@ -120,19 +102,21 @@ export default function VideoKYCPage() {
           userID,
           userName
         )
-
+ 
         const zego = ZegoUIKitPrebuilt.create(kitToken)
-
+ 
         if (cancelled) {
-          try { zego.destroy?.() } catch {}
+          try { zego.destroy?.() } catch (e) {}
           return
         }
-
+ 
         zegoRef.current = zego
-
+ 
         zego.joinRoom({
           container: containerRef.current,
-          scenario: { mode: ZegoUIKitPrebuilt.OneONoneCall },
+          scenario: {
+            mode: ZegoUIKitPrebuilt.OneONoneCall,
+          },
           showPreJoinView: false,
           showLeaveRoomConfirmDialog: false,
           turnOnCameraWhenJoining: true,
@@ -151,7 +135,9 @@ export default function VideoKYCPage() {
               setLoading(false)
             }
           },
-          onLeaveRoom: () => { router.back() },
+          onLeaveRoom: () => {
+            router.back()
+          },
           onUserJoin: () => {},
           onUserLeave: () => {},
         })
@@ -163,55 +149,55 @@ export default function VideoKYCPage() {
         }
       }
     }
-
+ 
     init()
-
+ 
     return () => {
       cancelled = true
       safeDestroyZego()
       hasInitialized.current = false
     }
   }, [])
-
+ 
   const toggleMic = () => {
     zegoRef.current?.turnMicrophoneOn?.(!micOn)
     setMicOn(p => !p)
   }
-
+ 
   const toggleCam = () => {
     zegoRef.current?.turnCameraOn?.(!camOn)
     setCamOn(p => !p)
   }
-
-  // Vendor-side polling: detect when admin approves/rejects during the call
+ 
+  // ✅ Vendor-side polling: detect when admin approves/rejects during the call
   useEffect(() => {
     if (role !== 'vendor') return
     const email = typeof window !== 'undefined' ? localStorage.getItem('velox_vendor_email') : null
     if (!email) return
-
+ 
     const poll = setInterval(async () => {
       try {
         const res = await fetch(`http://localhost:5000/api/vendor/status/${encodeURIComponent(email)}`)
         const data = await res.json()
         if (data.success && data.videoKycStatus === 'completed') {
           clearInterval(poll)
-          safeDestroyZego()
-          setDone(data.videoKycResult === 'approved' ? 'approved' : 'rejected')
+          await safeDestroyZego()
+          setDone(data.status === 'approved' ? 'approved' : 'rejected')
         }
       } catch {
         // ignore transient errors, keep polling
       }
     }, 3000)
-
+ 
     return () => clearInterval(poll)
   }, [role])
-
+ 
   const handleApprove = async () => {
     setActionLoading('approve')
     try {
       await axios.post(`/api/admin/vendors/${vendorId}/approve`)
       await axios.patch(`/api/admin/vendors/video-kyc/complete/${vendorId}`)
-      safeDestroyZego()
+      await safeDestroyZego()
       setDone('approved')
     } catch (err) {
       console.error(err)
@@ -219,14 +205,14 @@ export default function VideoKYCPage() {
       setActionLoading(null)
     }
   }
-
+ 
   const handleReject = async () => {
     if (!rejectReason.trim()) return
     setActionLoading('reject')
     try {
       await axios.post(`/api/admin/vendors/${vendorId}/reject`, { reason: rejectReason })
       await axios.patch(`/api/admin/vendors/video-kyc/complete/${vendorId}`)
-      safeDestroyZego()
+      await safeDestroyZego()
       setDone('rejected')
     } catch (err) {
       console.error(err)
@@ -235,18 +221,18 @@ export default function VideoKYCPage() {
       setShowRejectModal(false)
     }
   }
-
+ 
   // Done screen
   if (done) {
     const isVendor = role === 'vendor'
     const title = done === 'approved'
-      ? (isVendor ? "Congratulations! You're Approved 🎉" : 'Vendor Approved!')
+      ? (isVendor ? 'Congratulations! You\'re Approved 🎉' : 'Vendor Approved!')
       : (isVendor ? 'Application Rejected' : 'Vendor Rejected')
     const sub = done === 'approved'
       ? (isVendor ? 'Your Video KYC has been approved. You can now proceed to the next step.' : 'The vendor has been approved and can now receive bookings.')
       : (isVendor ? 'Your Video KYC was not approved. Please check your dashboard for details.' : `Vendor has been rejected. Reason: ${rejectReason}`)
     const redirectPath = isVendor ? '/partner/dashboard' : '/admin/dashboard'
-
+ 
     return (
       <>
         <style>{`*{box-sizing:border-box;margin:0;padding:0}.vk-done{min-height:100svh;background:#08080d;font-family:'Inter',sans-serif;display:flex;align-items:center;justify-content:center;padding:2rem}.vk-done-card{text-align:center;max-width:360px}.vk-done-icon{width:80px;height:80px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 1.5rem;animation:pop 0.5s cubic-bezier(0.34,1.56,0.64,1)}@keyframes pop{from{transform:scale(0);opacity:0}to{transform:scale(1);opacity:1}}.vk-done-title{font-size:26px;font-weight:800;color:#fff;letter-spacing:-0.8px;margin-bottom:0.5rem}.vk-done-sub{font-size:14px;color:rgba(255,255,255,0.4);margin-bottom:2rem;line-height:1.6}.vk-done-btn{width:100%;padding:14px;background:#0071e3;color:#fff;border:none;border-radius:14px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;box-shadow:0 0 30px rgba(0,113,227,0.35)}`}</style>
@@ -265,12 +251,14 @@ export default function VideoKYCPage() {
       </>
     )
   }
-
+ 
   return (
     <>
       <style>{`
         *{box-sizing:border-box;margin:0;padding:0}
         .vk-root{height:100svh;background:#08080d;font-family:'Inter',-apple-system,sans-serif;color:#fff;display:flex;flex-direction:column;overflow:hidden}
+ 
+        /* Header */
         .vk-header{display:flex;align-items:center;gap:12px;padding:1rem 1.5rem;border-bottom:1px solid rgba(255,255,255,0.06);flex-shrink:0;z-index:10;background:#08080d}
         .vk-back{width:36px;height:36px;border-radius:10px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);display:flex;align-items:center;justify-content:center;cursor:pointer;color:rgba(255,255,255,0.6);transition:all 0.2s}
         .vk-back:hover{background:rgba(255,255,255,0.1);color:#fff}
@@ -279,15 +267,23 @@ export default function VideoKYCPage() {
         .vk-live-badge{margin-left:auto;display:flex;align-items:center;gap:6px;background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.25);padding:5px 12px;border-radius:980px;font-size:11px;font-weight:700;color:#f87171}
         .vk-live-dot{width:6px;height:6px;border-radius:50%;background:#ef4444;animation:livePulse 1.5s infinite}
         @keyframes livePulse{0%,100%{opacity:1}50%{opacity:0.3}}
+ 
+        /* Video container */
         .vk-video-wrap{flex:1;position:relative;min-height:0}
         .vk-video-wrap > div{width:100%!important;height:100%!important}
+ 
+        /* Loading overlay */
         .vk-loading{position:absolute;inset:0;background:#08080d;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;z-index:5}
         .vk-loading-spinner{width:40px;height:40px;border:3px solid rgba(0,113,227,0.2);border-top-color:#0071e3;border-radius:50%;animation:spin 0.8s linear infinite}
         @keyframes spin{to{transform:rotate(360deg)}}
         .vk-loading-text{font-size:14px;color:rgba(255,255,255,0.4)}
+ 
+        /* Error */
         .vk-error{position:absolute;inset:0;background:#08080d;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;z-index:5;padding:2rem;text-align:center}
         .vk-error-text{font-size:15px;color:#f87171;font-weight:600}
         .vk-error-btn{padding:11px 24px;background:#0071e3;color:#fff;border:none;border-radius:12px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit}
+ 
+        /* Controls */
         .vk-controls{display:flex;align-items:center;justify-content:center;gap:12px;padding:1.25rem;border-top:1px solid rgba(255,255,255,0.06);flex-shrink:0;background:#08080d}
         .vk-ctrl-btn{width:50px;height:50px;border-radius:14px;display:flex;align-items:center;justify-content:center;cursor:pointer;border:1px solid rgba(255,255,255,0.1);transition:all 0.2s;font-size:13px;font-weight:700;font-family:inherit}
         .vk-ctrl-btn--on{background:rgba(255,255,255,0.08);color:#fff}
@@ -296,6 +292,8 @@ export default function VideoKYCPage() {
         .vk-ctrl-btn--off:hover{background:rgba(239,68,68,0.25)}
         .vk-ctrl-btn--end{background:rgba(239,68,68,0.85);border-color:transparent;color:#fff;width:56px;height:56px}
         .vk-ctrl-btn--end:hover{background:#ef4444}
+ 
+        /* Admin action buttons */
         .vk-admin-actions{display:flex;gap:10px;padding:0 1.25rem 1.25rem;flex-shrink:0}
         .vk-approve-btn{flex:1;padding:13px;background:linear-gradient(135deg,#10b981,#059669);color:#fff;border:none;border-radius:14px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 0 20px rgba(16,185,129,0.35);transition:all 0.25s}
         .vk-approve-btn:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 0 35px rgba(16,185,129,0.5)}
@@ -304,6 +302,8 @@ export default function VideoKYCPage() {
         .vk-reject-btn:hover:not(:disabled){background:rgba(239,68,68,0.2)}
         .vk-reject-btn:disabled{opacity:0.5;cursor:not-allowed}
         .vk-btn-spinner{width:14px;height:14px;border-radius:50%;border:2px solid rgba(255,255,255,0.3);border-top-color:#fff;animation:spin 0.7s linear infinite}
+ 
+        /* Reject modal */
         .vk-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.75);backdrop-filter:blur(12px);z-index:999;display:flex;align-items:center;justify-content:center;padding:1.5rem}
         .vk-modal{width:100%;max-width:380px;background:rgba(14,14,26,0.98);border:1px solid rgba(255,255,255,0.1);border-radius:22px;padding:2rem;box-shadow:0 32px 80px rgba(0,0,0,0.7)}
         .vk-modal h3{font-size:18px;font-weight:700;color:#fff;margin-bottom:0.5rem}
@@ -316,10 +316,13 @@ export default function VideoKYCPage() {
         .vk-modal-cancel:hover{background:rgba(255,255,255,0.09);color:#fff}
         .vk-modal-confirm{flex:1;padding:12px;border-radius:12px;border:none;cursor:pointer;background:linear-gradient(135deg,#dc2626,#b91c1c);color:#fff;font-size:14px;font-weight:600;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:8px;transition:all 0.2s}
         .vk-modal-confirm:disabled{opacity:0.5;cursor:not-allowed}
+ 
+        /* Room ID badge */
         .vk-room-badge{margin-left:auto;background:rgba(0,113,227,0.08);border:1px solid rgba(0,113,227,0.2);padding:4px 12px;border-radius:980px;font-size:10px;color:rgba(90,200,250,0.7);font-weight:700;letter-spacing:0.5px}
       `}</style>
-
+ 
       <div className="vk-root">
+        {/* Header */}
         <div className="vk-header">
           <button className="vk-back" onClick={() => router.back()}><ArrowLeft size={16}/></button>
           <div>
@@ -337,7 +340,8 @@ export default function VideoKYCPage() {
           )}
           {!joined && <div className="vk-room-badge">Room: {String(roomID).slice(0,8)}...</div>}
         </div>
-
+ 
+        {/* Video area */}
         <div className="vk-video-wrap">
           {loading && (
             <div className="vk-loading">
@@ -353,19 +357,21 @@ export default function VideoKYCPage() {
           )}
           <div ref={containerRef} style={{width:'100%',height:'100%'}}/>
         </div>
-
+ 
+        {/* Controls */}
         <div className="vk-controls">
           <button className={`vk-ctrl-btn ${micOn ? 'vk-ctrl-btn--on' : 'vk-ctrl-btn--off'}`} onClick={toggleMic}>
             {micOn ? <Mic size={18}/> : <MicOff size={18}/>}
           </button>
-          <button className="vk-ctrl-btn vk-ctrl-btn--end" onClick={() => router.back()}>
+          <button className={`vk-ctrl-btn vk-ctrl-btn--end`} onClick={() => router.back()}>
             <Phone size={20}/>
           </button>
           <button className={`vk-ctrl-btn ${camOn ? 'vk-ctrl-btn--on' : 'vk-ctrl-btn--off'}`} onClick={toggleCam}>
             {camOn ? <Video size={18}/> : <VideoOff size={18}/>}
           </button>
         </div>
-
+ 
+        {/* Admin approve/reject buttons */}
         {role === 'admin' && joined && (
           <div className="vk-admin-actions">
             <button className="vk-approve-btn" onClick={handleApprove} disabled={!!actionLoading}>
@@ -376,7 +382,8 @@ export default function VideoKYCPage() {
             </button>
           </div>
         )}
-
+ 
+        {/* Reject modal */}
         {showRejectModal && (
           <div className="vk-overlay">
             <div className="vk-modal">
