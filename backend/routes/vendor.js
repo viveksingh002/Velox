@@ -78,13 +78,19 @@ router.get("/nearby", async (req, res) => {
     const { type } = req.query;
 
     const filter = {
-      vendorStatus:   "approved",
-      videoKycResult: "approved",
-      pricingStatus:  "approved",
+      vendorStatus:  "approved",
+      pricingStatus: "approved",
     };
 
-    // Filter by vehicle type if provided
-    if (type) filter["vehicle.type"] = type;
+    // Sirf tab type filter lagao jab vehicle.type exist kare
+    if (type) {
+      filter["$or"] = [
+        { "vehicle.type": type },
+        { "vehicle.type": { $exists: false } },
+        { "vehicle.type": null },
+        { "vehicle.type": "" },
+      ];
+    }
 
     const vendors = await Vendor.find(filter)
       .select("name vehicle baseFare pricePerKm waitingCharge vehicleImage _id")
@@ -92,18 +98,17 @@ router.get("/nearby", async (req, res) => {
 
     const result = vendors.map((v) => ({
       _id:          v._id.toString(),
-      type:         v.vehicle?.type  || type || "bike",
+      type:         v.vehicle?.type   || type || "bike",
       owner:        v._id.toString(),
       driverName:   v.name,
-      driverRating: 4.5,           // placeholder — add rating model later
-      driverTrips:  0,             // placeholder — add trips count later
+      driverRating: 4.5,
+      driverTrips:  0,
       plateNumber:  v.vehicle?.number || "—",
       vehicleModel: v.vehicle?.model  || "",
-      vehicleImage: v.vehicleImage || "",
-      baseFare:     v.baseFare    || 0,
-      pricePerKm:   v.pricePerKm  || 0,
-      waitingCharge:v.waitingCharge || 0,
-      // distanceToPickup & eta are calculated on the frontend using pickupLat/Lng
+      vehicleImage: v.vehicleImage    || "",
+      baseFare:     v.baseFare        || 0,
+      pricePerKm:   v.pricePerKm      || 0,
+      waitingCharge:v.waitingCharge   || 0,
     }));
 
     res.json({ success: true, vendors: result });
