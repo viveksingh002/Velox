@@ -21,55 +21,6 @@ const VEHICLE_META: Record<string, { label: string; Icon: any }> = {
   truck:   { label: "Truck",   Icon: Truck },
 };
 
-// ── Temporary mock vehicles (replace with real API later) ──
-function getMockVehicles(vehicleType: string, pickupLat: number, pickupLng: number) {
-  const base = [
-    {
-      _id: "mock_001",
-      type: vehicleType,
-      owner: "driver_001",
-      driverName: "Rajesh Kumar",
-      driverRating: 4.8,
-      driverTrips: 1240,
-      plateNumber: "UP80 AB 1234",
-      baseFare: 30,
-      pricePerKm: vehicleType === "bike" ? 8 : vehicleType === "auto" ? 12 : vehicleType === "car" ? 16 : vehicleType === "loading" ? 20 : 25,
-      distanceToPickup: 0.8,
-      eta: 3,
-      location: { lat: pickupLat + 0.004, lng: pickupLng + 0.003 },
-    },
-    {
-      _id: "mock_002",
-      type: vehicleType,
-      owner: "driver_002",
-      driverName: "Suresh Singh",
-      driverRating: 4.6,
-      driverTrips: 892,
-      plateNumber: "UP80 CD 5678",
-      baseFare: 30,
-      pricePerKm: vehicleType === "bike" ? 8 : vehicleType === "auto" ? 12 : vehicleType === "car" ? 16 : vehicleType === "loading" ? 20 : 25,
-      distanceToPickup: 1.4,
-      eta: 5,
-      location: { lat: pickupLat - 0.005, lng: pickupLng + 0.006 },
-    },
-    {
-      _id: "mock_003",
-      type: vehicleType,
-      owner: "driver_003",
-      driverName: "Amit Verma",
-      driverRating: 4.9,
-      driverTrips: 2100,
-      plateNumber: "UP80 EF 9012",
-      baseFare: 30,
-      pricePerKm: vehicleType === "bike" ? 8 : vehicleType === "auto" ? 12 : vehicleType === "car" ? 16 : vehicleType === "loading" ? 20 : 25,
-      distanceToPickup: 2.1,
-      eta: 8,
-      location: { lat: pickupLat + 0.008, lng: pickupLng - 0.004 },
-    },
-  ];
-  return base;
-}
-
 export default function SearchPage() {
   const params = useSearchParams();
   const router = useRouter();
@@ -79,6 +30,7 @@ export default function SearchPage() {
   const [km,       setKm]       = useState<number | null>(null);
   const [vehicles, setVehicles] = useState<any[]>([]);
   const [loading,  setLoading]  = useState(false);
+  const [fetchErr, setFetchErr] = useState("");
 
   const vehicle      = params.get("vehicle")      || "";
   const mobileNumber = params.get("mobileNumber") || params.get("mobile") || "";
@@ -87,18 +39,43 @@ export default function SearchPage() {
   const meta         = VEHICLE_META[vehicle];
   const eta          = km !== null ? Math.max(3, Math.round((km / 25) * 60)) : null;
 
-  async function fetchNearbyVehicles(lat: number, lng: number) {
+  async function fetchNearbyVehicles() {
     setLoading(true);
-    // Simulate network delay
-    await new Promise(r => setTimeout(r, 1200));
-    setVehicles(getMockVehicles(vehicle, lat, lng));
-    setLoading(false);
+    setFetchErr("");
+    try {
+      const res  = await fetch(
+        `http://localhost:5000/api/vendor/nearby?type=${encodeURIComponent(vehicle)}`
+      );
+      const data = await res.json();
+
+      if (!data.success) throw new Error(data.message || "Failed to fetch");
+
+      // Add a fake distanceToPickup / eta per vendor
+      // (replace with real geo-distance once vendors store their live location)
+      const enriched = data.vendors.map((v: any, i: number) => ({
+        ...v,
+        distanceToPickup: parseFloat((0.5 + i * 0.6).toFixed(1)),
+        eta: 2 + i * 2,
+        location: {
+          lat: pickupLat + (Math.random() - 0.5) * 0.01,
+          lng: pickupLng + (Math.random() - 0.5) * 0.01,
+        },
+      }));
+
+      setVehicles(enriched);
+    } catch (err: any) {
+      console.error("Fetch nearby error:", err);
+      setFetchErr(err.message || "Could not load vehicles");
+      setVehicles([]);
+    } finally {
+      setLoading(false);
+    }
   }
 
   useEffect(() => {
-    if (!pickupLat || !pickupLng) return;
-    fetchNearbyVehicles(pickupLat, pickupLng);
-  }, [pickupLat, pickupLng]);
+    if (!vehicle) return;
+    fetchNearbyVehicles();
+  }, [vehicle]);
 
   return (
     <>
@@ -221,16 +198,13 @@ export default function SearchPage() {
           animation: spin 0.7s linear infinite;
         }
         @keyframes spin { to { transform: rotate(360deg); } }
-
-        /* Mock badge */
-        .search-mock-banner {
+        .search-error-banner {
           display: flex; align-items: center; gap: 8px;
-          background: #fffbeb; border: 1px solid #fde68a;
-          border-radius: 10px; padding: 8px 14px;
-          font-size: 11px; color: #92400e; font-weight: 600;
+          background: #fff1f2; border: 1px solid #fecdd3;
+          border-radius: 10px; padding: 10px 14px;
+          font-size: 12px; color: #be123c; font-weight: 600;
           margin-bottom: 14px;
         }
-
         .search-empty {
           display: flex; flex-direction: column;
           align-items: center; text-align: center;
@@ -298,6 +272,7 @@ export default function SearchPage() {
 
           <div className="search-sheet-inner">
 
+            {/* Route card */}
             <motion.div className="search-route-card" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.12 }}>
               <div className="search-route-row">
                 <div className="search-route-dots"><div className="search-route-dot-fill" /></div>
@@ -317,15 +292,22 @@ export default function SearchPage() {
               </div>
             </motion.div>
 
-            {/* Mock data banner */}
-            <div className="search-mock-banner">
-              ⚠ Demo vehicles — real drivers Add after api is ready 
-            </div>
+            {/* Error banner */}
+            {fetchErr && (
+              <div className="search-error-banner">
+                ⚠ {fetchErr}
+              </div>
+            )}
 
+            {/* Section header */}
             <motion.div className="search-section-header" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }}>
               <div>
                 <div className="search-section-title">
-                  {loading ? "Finding vehicles…" : vehicles.length > 0 ? `${vehicles.length} Available` : "No vehicles nearby"}
+                  {loading
+                    ? "Finding vehicles…"
+                    : vehicles.length > 0
+                      ? `${vehicles.length} Available`
+                      : "No vehicles nearby"}
                 </div>
                 {meta && <div className="search-section-sub">{meta.label} rides near your pickup</div>}
               </div>
@@ -343,22 +325,31 @@ export default function SearchPage() {
               </AnimatePresence>
             </motion.div>
 
+            {/* Empty state */}
             <AnimatePresence>
               {!loading && vehicles.length === 0 && (
                 <motion.div className="search-empty" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
                   <div className="search-empty-icon"><Search size={26} /></div>
                   <div className="search-empty-title">No vehicles found</div>
-                  <div className="search-empty-sub">No {meta?.label || "vehicle"} drivers available near your pickup right now.</div>
-                  <button className="search-retry-btn" onClick={() => fetchNearbyVehicles(pickupLat, pickupLng)}>
+                  <div className="search-empty-sub">
+                    No {meta?.label || "vehicle"} drivers are live near your pickup right now.
+                  </div>
+                  <button className="search-retry-btn" onClick={fetchNearbyVehicles}>
                     <RefreshCw size={14} /> Retry Search
                   </button>
                 </motion.div>
               )}
             </AnimatePresence>
 
+            {/* Vehicle cards */}
             <div className="search-vehicle-grid">
               {vehicles.map((v, i) => (
-                <motion.div key={v._id} initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06, duration: 0.38, ease: [0.22, 1, 0.36, 1] }}>
+                <motion.div
+                  key={v._id}
+                  initial={{ opacity: 0, y: 24 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.06, duration: 0.38, ease: [0.22, 1, 0.36, 1] }}
+                >
                   <VehicleBookingCard
                     vehicle={v}
                     distanceKm={km ?? undefined}

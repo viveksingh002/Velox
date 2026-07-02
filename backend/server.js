@@ -34,3 +34,4 @@ app.get("/", (req, res) => res.send("Backend is running 🚀"));
 
 // Start
 app.listen(5000, () => console.log("Server running on port 5000"));
+

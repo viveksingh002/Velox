@@ -55,19 +55,60 @@ router.post("/pricing/:email", async (req, res) => {
       pricingStatus: "submitted",
     };
 
-    if (vehicleImage) {
-      updateData.vehicleImage = vehicleImage;
-    }
+    if (vehicleImage) updateData.vehicleImage = vehicleImage;
 
     const vendor = await Vendor.findOneAndUpdate({ email }, updateData, { new: true });
-
-    if (!vendor) {
-      return res.status(404).json({ success: false, message: "Vendor not found" });
-    }
+    if (!vendor) return res.status(404).json({ success: false, message: "Vendor not found" });
 
     res.json({ success: true, vendor });
   } catch (err) {
     console.error("Pricing submit error:", err);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+});
+
+// ── GET /api/vendor/nearby?type=bike ─────────────────────────────────────────
+// Returns all fully-approved vendors of the requested vehicle type.
+// "Fully approved" means:
+//   • vendorStatus   = "approved"   (documents approved by admin)
+//   • videoKycResult = "approved"   (video KYC passed)
+//   • pricingStatus  = "approved"   (pricing approved by admin)
+router.get("/nearby", async (req, res) => {
+  try {
+    const { type } = req.query;
+
+    const filter = {
+      vendorStatus:   "approved",
+      videoKycResult: "approved",
+      pricingStatus:  "approved",
+    };
+
+    // Filter by vehicle type if provided
+    if (type) filter["vehicle.type"] = type;
+
+    const vendors = await Vendor.find(filter)
+      .select("name vehicle baseFare pricePerKm waitingCharge vehicleImage _id")
+      .lean();
+
+    const result = vendors.map((v) => ({
+      _id:          v._id.toString(),
+      type:         v.vehicle?.type  || type || "bike",
+      owner:        v._id.toString(),
+      driverName:   v.name,
+      driverRating: 4.5,           // placeholder — add rating model later
+      driverTrips:  0,             // placeholder — add trips count later
+      plateNumber:  v.vehicle?.number || "—",
+      vehicleModel: v.vehicle?.model  || "",
+      vehicleImage: v.vehicleImage || "",
+      baseFare:     v.baseFare    || 0,
+      pricePerKm:   v.pricePerKm  || 0,
+      waitingCharge:v.waitingCharge || 0,
+      // distanceToPickup & eta are calculated on the frontend using pickupLat/Lng
+    }));
+
+    res.json({ success: true, vendors: result });
+  } catch (err) {
+    console.error("Nearby vendors error:", err);
     res.status(500).json({ success: false, message: "Server error" });
   }
 });
