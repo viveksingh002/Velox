@@ -18,14 +18,14 @@ router.post("/booking", async (req, res) => {
   }
 });
 
-// TEST ROUTE (IMPORTANT for debugging)
-router.get("/booking", (req, res) => {
-  res.send("Booking route working 🚀");
+// GET ALL BOOKINGS (partner ke liye)
+router.get("/booking", async (req, res) => {
+  try {
+    const bookings = await Booking.find().sort({ createdAt: -1 });
+    res.json(bookings);
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
 });
 
 module.exports = router;
-
-router.get("/booking", async (req, res) => {
-  const bookings = await Booking.find();
-  res.json(bookings);
-});
