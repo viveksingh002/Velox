@@ -1,272 +1,291 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { useParams, useSearchParams, useRouter } from 'next/navigation'
+import { useSearchParams, useRouter } from 'next/navigation'
 
-const API = 'http://localhost:5000/api'
-
-// Fixed reference points — simulation only, backend has no lat/lng yet
-const PICKUP_COORD: [number, number] = [28.6139, 77.2090]
-const DROP_COORD:   [number, number] = [28.6300, 77.2200]
-const START_COORD:  [number, number] = [28.6050, 77.2000]
-const SIM_STEPS = 40          // how many ticks driver takes to reach pickup, then drop
-const TICK_MS   = 1500
-
-function lerp(a: number, b: number, t: number) {
-  return a + (b - a) * t
-}
-
-export default function RidePage() {
-  const params  = useParams()
+export default function RideTrackingPage() {
   const search  = useSearchParams()
   const router  = useRouter()
+  const mapRef  = useRef<HTMLDivElement>(null)
+  const mapInst = useRef<any>(null)
 
-  const bookingId  = (params.bookingId as string) || ''
-  const driverName = search.get('driverName') || 'Driver'
-  const pickup     = search.get('pickup')     || ''
-  const drop       = search.get('drop')       || ''
-  const fare       = search.get('fare')       || '0'
-  const vehicle    = search.get('vehicle')    || 'bike'
-  const payMethod  = search.get('payMethod')  || 'cash'
+  const driverName   = search.get('driverName')   || 'Driver'
+  const vehicleModel = search.get('vehicleModel') || 'Vehicle'
+  const plateNumber  = search.get('plateNumber')  || '—'
+  const pickup       = search.get('pickup')        || ''
+  const drop         = search.get('drop')          || ''
+  const fare         = search.get('fare')          || '0'
+  const vehicle      = search.get('vehicle')       || 'bike'
+  const payMethod    = search.get('payMethod')     || 'cash'
+  const pickupLat    = Number(search.get('pickupLat'))  || 25.4484
+  const pickupLng    = Number(search.get('pickupLng'))  || 78.5691
+  const dropLat      = Number(search.get('dropLat'))    || 25.4600
+  const dropLng      = Number(search.get('dropLng'))    || 78.5800
 
-  const mapRef       = useRef<HTMLDivElement>(null)
-  const mapObj        = useRef<any>(null)
-  const driverMarker  = useRef<any>(null)
-  const stepRef        = useRef(0)
-  const legRef          = useRef<'to_pickup' | 'to_drop'>('to_pickup')
+  const [status, setStatus] = useState<'on_the_way' | 'arrived' | 'completed'>('on_the_way')
+  const [eta,    setEta]    = useState(5)
 
-  const [mapReady, setMapReady] = useState(false)
-  const [status,   setStatus]   = useState<'on_the_way' | 'arrived' | 'in_progress' | 'completed'>('on_the_way')
-  const [eta,      setEta]      = useState(5)
-  const [liveDriverName, setLiveDriverName] = useState(driverName)
-
-  // ── Load Leaflet + init map ────────────────────────────────────────────
   useEffect(() => {
-    if (mapObj.current) return
+    if (mapInst.current || !mapRef.current) return
 
     const link = document.createElement('link')
-    link.rel  = 'stylesheet'
-    link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'
+    link.rel   = 'stylesheet'
+    link.href  = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'
     document.head.appendChild(link)
 
-    const script = document.createElement('script')
-    script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'
-    script.onload = () => initMap()
+    const script    = document.createElement('script')
+    script.src      = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'
+    script.onload   = () => initMap()
     document.head.appendChild(script)
 
     return () => {
-      if (mapObj.current) {
-        mapObj.current.remove()
-        mapObj.current = null
-      }
+      mapInst.current?.remove()
+      mapInst.current = null
     }
   }, [])
 
   const initMap = () => {
-    if (!mapRef.current || mapObj.current) return
+    if (!mapRef.current || mapInst.current) return
     const L = (window as any).L
 
-    const map = L.map(mapRef.current, { zoomControl: false }).setView(START_COORD, 14)
-    mapObj.current = map
+    const map = L.map(mapRef.current, { zoomControl: false })
+      .setView([pickupLat, pickupLng], 14)
+    mapInst.current = map
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '© OpenStreetMap',
-      maxZoom: 19,
+      attribution: '© OpenStreetMap', maxZoom: 19,
     }).addTo(map)
 
     L.control.zoom({ position: 'bottomright' }).addTo(map)
 
-    const pickupIcon = L.divIcon({
-      html: `<div style="background:#111;color:#fff;padding:5px 10px;border-radius:8px;font-size:11px;font-weight:700;letter-spacing:.3px;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,.3)">PICKUP</div>`,
-      className: '', iconAnchor: [30, 10],
-    })
-    const dropIcon = L.divIcon({
-      html: `<div style="background:#fff;color:#111;padding:5px 10px;border-radius:8px;font-size:11px;font-weight:700;letter-spacing:.3px;white-space:nowrap;border:1.5px solid #e5e7eb;box-shadow:0 2px 8px rgba(0,0,0,.15)">DROP</div>`,
-      className: '', iconAnchor: [20, 10],
-    })
-    const driverIcon = L.divIcon({
-      html: `<div style="width:34px;height:34px;background:#111;border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 12px rgba(0,0,0,.35);border:2px solid #fff">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="5.5" cy="17.5" r="3.5"/><circle cx="18.5" cy="17.5" r="3.5"/><path d="M15 6a1 1 0 0 0-1-1h-3l3.15 4.63L18 14"/><path d="M5.5 17.5 9 10l1.5-2h5"/></svg>
-      </div>`,
-      className: '', iconAnchor: [17, 17],
-    })
+    const mkIcon = (html: string) => L.divIcon({ html, className: '', iconAnchor: [0, 0] })
 
-    L.marker(PICKUP_COORD, { icon: pickupIcon }).addTo(map)
-    L.marker(DROP_COORD,   { icon: dropIcon   }).addTo(map)
+    const pickupIcon = mkIcon(`<div style="background:#111;color:#fff;padding:5px 12px;border-radius:20px;font-size:11px;font-weight:800;letter-spacing:.5px;box-shadow:0 2px 8px rgba(0,0,0,.3);white-space:nowrap;border:2px solid #fff">PICKUP</div>`)
+    const dropIcon   = mkIcon(`<div style="background:#fff;color:#111;padding:5px 12px;border-radius:20px;font-size:11px;font-weight:800;letter-spacing:.5px;box-shadow:0 2px 8px rgba(0,0,0,.15);white-space:nowrap;border:1.5px solid #e5e7eb">DROP</div>`)
 
-    driverMarker.current = L.marker(START_COORD, { icon: driverIcon, zIndexOffset: 1000 }).addTo(map)
+    // Driver slightly offset from pickup
+    const driverLat = pickupLat - 0.012
+    const driverLng = pickupLng - 0.010
+    const driverIcon = mkIcon(`<div style="width:38px;height:38px;background:#111;border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 12px rgba(0,0,0,.35);border:2.5px solid #fff;font-size:18px">🏍️</div>`)
 
-    L.polyline([START_COORD, PICKUP_COORD, DROP_COORD], {
-      color: '#111', weight: 3, dashArray: '6 6', opacity: 0.45,
+    L.marker([pickupLat, pickupLng], { icon: pickupIcon }).addTo(map)
+    L.marker([dropLat,   dropLng],   { icon: dropIcon   }).addTo(map)
+    L.marker([driverLat, driverLng], { icon: driverIcon }).addTo(map)
+
+    L.polyline([[driverLat, driverLng], [pickupLat, pickupLng], [dropLat, dropLng]], {
+      color: '#111', weight: 3, dashArray: '6 8', opacity: 0.55,
     }).addTo(map)
 
-    map.fitBounds([START_COORD, PICKUP_COORD, DROP_COORD], { padding: [50, 50] })
-    setMapReady(true)
+    map.fitBounds([[driverLat, driverLng], [pickupLat, pickupLng], [dropLat, dropLng]], { padding: [48, 48] })
   }
 
-  // ── Simulate driver movement ───────────────────────────────────────────
   useEffect(() => {
-    if (!mapReady) return
-    const L = (window as any).L
-
-    const timer = setInterval(() => {
-      const from = legRef.current === 'to_pickup' ? START_COORD  : PICKUP_COORD
-      const to   = legRef.current === 'to_pickup' ? PICKUP_COORD : DROP_COORD
-
-      stepRef.current += 1
-      const t = Math.min(stepRef.current / SIM_STEPS, 1)
-      const next: [number, number] = [lerp(from[0], to[0], t), lerp(from[1], to[1], t)]
-
-      if (driverMarker.current) driverMarker.current.setLatLng(next)
-
-      if (t >= 1) {
-        stepRef.current = 0
-        if (legRef.current === 'to_pickup') {
-          legRef.current = 'to_drop'
-          setStatus('in_progress')
-        } else {
-          clearInterval(timer)
-          setStatus('completed')
-        }
-      }
-    }, TICK_MS)
-
-    return () => clearInterval(timer)
-  }, [mapReady])
-
-  // ── ETA countdown ──────────────────────────────────────────────────────
-  useEffect(() => {
-    if (status === 'completed') return
     const t = setInterval(() => {
-      setEta(prev => (prev <= 1 ? 0 : prev - 1))
+      setEta(p => {
+        if (p <= 1) { clearInterval(t); setStatus('arrived'); return 0 }
+        return p - 1
+      })
     }, 60000)
     return () => clearInterval(t)
-  }, [status])
+  }, [])
 
-  useEffect(() => {
-    if (status === 'in_progress' && eta === 0) setEta(8)
-  }, [status])
-
-  // ── Poll real booking status from backend ──────────────────────────────
-  useEffect(() => {
-    if (!bookingId) return
-    const poll = setInterval(async () => {
-      try {
-        const res  = await fetch(`${API}/booking/${bookingId}/status`)
-        const data = await res.json()
-        if (data.success && data.driverName) setLiveDriverName(data.driverName)
-      } catch {}
-    }, 5000)
-    return () => clearInterval(poll)
-  }, [bookingId])
-
-  // ── Redirect home after completion ─────────────────────────────────────
-  useEffect(() => {
-    if (status !== 'completed') return
-    const t = setTimeout(() => router.push('/'), 2500)
-    return () => clearTimeout(t)
-  }, [status, router])
-
-  const statusConfig = {
-    on_the_way: { label: 'Driver on the Way',  color: '#22c55e', dot: true  },
-    arrived:    { label: 'Driver Arrived',      color: '#f59e0b', dot: false },
-    in_progress:{ label: 'Ride in Progress',    color: '#2563eb', dot: true  },
-    completed:  { label: 'Ride Completed',      color: '#6b7280', dot: false },
-  }
-  const sc = statusConfig[status]
+  const isCompleted = status === 'completed'
 
   return (
     <>
       <style>{`
-        *{box-sizing:border-box}
-        .rd-page{height:100svh;display:flex;flex-direction:column;font-family:'Inter',-apple-system,sans-serif;background:#f4f4f6;overflow:hidden}
-        .rd-map-wrap{flex:1;position:relative;background:#e8e8ea}
-        .rd-map{width:100%;height:100%}
-        .rd-status-pill{position:absolute;top:16px;left:50%;transform:translateX(-50%);background:#fff;border-radius:99px;padding:8px 18px;display:flex;align-items:center;gap:8px;box-shadow:0 2px 16px rgba(0,0,0,.12);z-index:500;white-space:nowrap}
-        .rd-dot{width:8px;height:8px;border-radius:50%;animation:rd-pulse 1.4s infinite}
-        @keyframes rd-pulse{0%,100%{opacity:1}50%{opacity:.3}}
-        .rd-panel{background:#fff;border-radius:20px 20px 0 0;padding:20px 20px 28px;box-shadow:0 -4px 24px rgba(0,0,0,.08);z-index:100}
-        .rd-stats{display:flex;gap:10px;margin-bottom:16px}
-        .rd-stat{flex:1;border-radius:14px;padding:12px 16px}
-        .rd-stat-eta{background:#f9fafb;border:1px solid #f3f4f6}
-        .rd-stat-fare{background:#111}
-        .rd-stat-label{font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-bottom:4px}
-        .rd-stat-val{font-size:22px;font-weight:800}
-        .rd-driver-card{display:flex;align-items:center;justify-content:space-between;background:#111;border-radius:16px;padding:14px 18px;margin-bottom:14px}
-        .rd-avatar{width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,#6366f1,#a5b4fc);display:flex;align-items:center;justify-content:center;color:#fff;font-size:16px;font-weight:700;flex-shrink:0}
-        .rd-call-btn{width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,.1);display:flex;align-items:center;justify-content:center;text-decoration:none;flex-shrink:0}
-        .rd-route{background:#f9fafb;border-radius:14px;padding:12px 16px;margin-bottom:14px;border:1px solid #f3f4f6}
-        .rd-pay-badge{font-size:11px;font-weight:600;padding:2px 8px;border-radius:99px;color:#fff;text-transform:capitalize}
-        .rd-complete-btn{width:100%;padding:15px;background:#111;color:#fff;border:none;border-radius:14px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit}
-        .rd-done-banner{text-align:center;padding:12px;background:#f0fdf4;border-radius:14px;border:1px solid #bbf7d0}
+        *{box-sizing:border-box;margin:0;padding:0}
+        .rt-root{height:100svh;display:flex;flex-direction:column;font-family:'Inter',-apple-system,sans-serif;overflow:hidden;background:#f4f4f6}
+
+        /* Map */
+        .rt-map{flex:1;position:relative;min-height:0}
+        .rt-map-el{width:100%;height:100%}
+
+        /* Status pill */
+        .rt-status-pill{position:absolute;top:16px;left:50%;transform:translateX(-50%);background:#fff;border-radius:980px;padding:8px 20px;display:flex;align-items:center;gap:8px;box-shadow:0 2px 16px rgba(0,0,0,.12);z-index:1000;white-space:nowrap;font-size:13px;font-weight:700;color:#111}
+        .rt-status-dot{width:8px;height:8px;border-radius:50%;animation:rtPulse 1.5s infinite}
+        @keyframes rtPulse{0%,100%{opacity:1}50%{opacity:.3}}
+
+        /* Bottom panel */
+        .rt-panel{background:#fff;border-radius:20px 20px 0 0;box-shadow:0 -4px 24px rgba(0,0,0,.08);flex-shrink:0;overflow:hidden}
+        .rt-panel-scroll{padding:16px 16px 32px;overflow-y:auto;max-height:55vh}
+
+        /* ETA + Fare */
+        .rt-top-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+        .rt-card-light{background:#f9fafb;border-radius:14px;padding:12px 16px;border:1px solid #f3f4f6}
+        .rt-card-dark{background:#111;border-radius:14px;padding:12px 16px}
+        .rt-card-label{font-size:9px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:4px}
+        .rt-card-val{font-size:22px;font-weight:800;line-height:1}
+
+        /* Driver card */
+        .rt-driver{background:#111;border-radius:16px;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+        .rt-driver-left{display:flex;align-items:center;gap:12px}
+        .rt-avatar{width:46px;height:46px;border-radius:50%;background:linear-gradient(135deg,#6366f1,#a5b4fc);display:flex;align-items:center;justify-content:center;color:#fff;font-size:17px;font-weight:800;flex-shrink:0}
+        .rt-driver-name{font-size:15px;font-weight:700;color:#fff;margin-bottom:4px}
+        .rt-driver-meta{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+        .rt-driver-meta span{font-size:12px;color:rgba(255,255,255,.55)}
+        .rt-pay-badge{font-size:10px;font-weight:700;padding:2px 9px;border-radius:980px;text-transform:capitalize}
+
+        /* Action buttons */
+        .rt-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+        .rt-action-btn{display:flex;align-items:center;justify-content:center;gap:8px;padding:12px;border-radius:14px;font-size:13px;font-weight:600;cursor:pointer;transition:all .2s;border:none;font-family:inherit}
+        .rt-call-btn{background:#f9fafb;color:#111;border:1.5px solid #e5e7eb}
+        .rt-call-btn:hover{background:#f3f4f6}
+        .rt-msg-btn{background:#111;color:#fff}
+        .rt-msg-btn:hover{background:#000}
+
+        /* Route card */
+        .rt-route{background:#f9fafb;border-radius:14px;padding:14px 16px;border:1px solid #f3f4f6;margin-bottom:12px}
+        .rt-route-row{display:flex;align-items:flex-start;gap:12px}
+        .rt-route-dots{display:flex;flex-direction:column;align-items:center;padding-top:3px;flex-shrink:0}
+        .rt-dot-fill{width:8px;height:8px;border-radius:50%;background:#111}
+        .rt-dot-empty{width:8px;height:8px;border-radius:50%;border:2px solid #111;background:#fff}
+        .rt-dot-line{width:1.5px;height:28px;background:#e5e7eb;margin:2px 0}
+        .rt-route-label{font-size:9px;font-weight:800;color:#9ca3af;letter-spacing:1px;text-transform:uppercase;margin-bottom:2px}
+        .rt-route-text{font-size:13px;font-weight:500;color:#111;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:260px}
+
+        /* Vehicle card */
+        .rt-vehicle{background:#f9fafb;border-radius:14px;padding:12px 16px;border:1px solid #f3f4f6;display:flex;align-items:center;gap:12px;margin-bottom:12px}
+        .rt-vehicle-icon{width:42px;height:42px;border-radius:12px;background:#111;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
+        .rt-vehicle-model{font-size:14px;font-weight:700;color:#111}
+        .rt-vehicle-plate{font-size:11px;color:#9ca3af;font-weight:600;letter-spacing:.5px;margin-top:2px}
+        .rt-plate-badge{background:#111;color:#fff;font-size:11px;font-weight:800;padding:4px 12px;border-radius:8px;letter-spacing:1px;margin-left:auto}
+
+        /* Complete / Done */
+        .rt-complete-btn{width:100%;padding:15px;background:#111;color:#fff;border:none;border-radius:14px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .2s}
+        .rt-complete-btn:hover{background:#000;transform:translateY(-1px)}
+        .rt-done-banner{background:#f0fdf4;border:1px solid #bbf7d0;border-radius:14px;padding:14px;text-align:center;font-size:14px;font-weight:700;color:#16a34a}
+
+        @media(min-width:768px){
+          .rt-root{flex-direction:row}
+          .rt-map{flex:1}
+          .rt-panel{width:360px;border-radius:0;border-left:1px solid #f3f4f6;box-shadow:-4px 0 24px rgba(0,0,0,.06)}
+          .rt-panel-scroll{max-height:100vh;padding:24px}
+          .rt-top-label{font-size:11px;font-weight:700;color:#9ca3af;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:12px}
+        }
       `}</style>
 
-      <div className="rd-page">
-        <div className="rd-map-wrap">
-          <div ref={mapRef} className="rd-map" />
-          <div className="rd-status-pill">
-            {sc.dot && <div className="rd-dot" style={{ background: sc.color }} />}
-            <span style={{ fontSize: 13, fontWeight: 700, color: '#111' }}>{sc.label}</span>
+      <div className="rt-root">
+
+        {/* Map */}
+        <div className="rt-map">
+          <div ref={mapRef} className="rt-map-el" />
+          <div className="rt-status-pill">
+            {status === 'on_the_way' && <div className="rt-status-dot" style={{ background: '#22c55e' }} />}
+            {status === 'on_the_way' && 'Driver on the Way'}
+            {status === 'arrived'    && '🟡 Driver Arrived!'}
+            {status === 'completed'  && '✓ Ride Completed'}
           </div>
         </div>
 
-        <div className="rd-panel">
-          <div className="rd-stats">
-            <div className="rd-stat rd-stat-eta">
-              <p className="rd-stat-label" style={{ color: '#9ca3af' }}>ETA</p>
-              <p className="rd-stat-val" style={{ color: '#111' }}>{status === 'completed' ? '0' : eta} min</p>
-            </div>
-            <div className="rd-stat rd-stat-fare">
-              <p className="rd-stat-label" style={{ color: 'rgba(255,255,255,.5)' }}>Fare</p>
-              <p className="rd-stat-val" style={{ color: '#fff' }}>₹{fare}</p>
-            </div>
-          </div>
+        {/* Panel */}
+        <div className="rt-panel">
+          <div className="rt-panel-scroll">
 
-          <div className="rd-driver-card">
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <div className="rd-avatar">{liveDriverName.charAt(0).toUpperCase()}</div>
-              <div>
-                <p style={{ fontSize: 15, fontWeight: 700, color: '#fff', marginBottom: 2 }}>{liveDriverName}</p>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                  <span style={{ fontSize: 12, color: 'rgba(255,255,255,.6)' }}>⭐ 4.9</span>
-                  <span style={{ fontSize: 12, color: 'rgba(255,255,255,.3)' }}>·</span>
-                  <span style={{ fontSize: 12, color: 'rgba(255,255,255,.6)', textTransform: 'capitalize' }}>{vehicle}</span>
-                  <span className="rd-pay-badge" style={{ background: payMethod === 'cash' ? '#16a34a' : '#2563eb' }}>{payMethod}</span>
+            {/* Desktop label */}
+            <div className="rt-top-label" style={{ display: 'none' }}>LIVE TRACKING — YOUR RIDE</div>
+
+            {/* ETA + Fare */}
+            <div className="rt-top-row">
+              <div className="rt-card-light">
+                <div className="rt-card-label" style={{ color: '#9ca3af' }}>ETA</div>
+                <div className="rt-card-val" style={{ color: '#111' }}>{eta} <span style={{ fontSize: 14, fontWeight: 500, color: '#9ca3af' }}>min</span></div>
+              </div>
+              <div className="rt-card-dark">
+                <div className="rt-card-label" style={{ color: 'rgba(255,255,255,.45)' }}>FARE</div>
+                <div className="rt-card-val" style={{ color: '#fff' }}>₹{fare}</div>
+              </div>
+            </div>
+
+            {/* Driver */}
+            <div className="rt-driver">
+              <div className="rt-driver-left">
+                <div className="rt-avatar">{driverName.charAt(0).toUpperCase()}</div>
+                <div>
+                  <div className="rt-driver-name">{driverName}</div>
+                  <div className="rt-driver-meta">
+                    <span>⭐ 4.9</span>
+                    <span>·</span>
+                    <span style={{ textTransform: 'capitalize' }}>{vehicle}</span>
+                    <span
+                      className="rt-pay-badge"
+                      style={{
+                        background: payMethod === 'cash' ? '#16a34a' : '#2563eb',
+                        color: '#fff',
+                      }}
+                    >
+                      {payMethod === 'cash' ? 'Cash' : 'Paid'}
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
-            <a href="tel:+911234567890" className="rd-call-btn">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.41 2 2 0 0 1 3.6 1.21h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.81a16 16 0 0 0 6.29 6.29l.96-.96a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/>
-              </svg>
-            </a>
-          </div>
 
-          <div className="rd-route">
-            <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', paddingTop: 3 }}>
-                <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#111' }} />
-                <div style={{ width: 1.5, height: 24, background: '#e5e7eb' }} />
-                <div style={{ width: 8, height: 8, borderRadius: '50%', border: '2px solid #111', background: '#fff' }} />
-              </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <p style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', letterSpacing: '1px', textTransform: 'uppercase', marginBottom: 2 }}>Pickup</p>
-                <p style={{ fontSize: 13, color: '#111', fontWeight: 500, marginBottom: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{pickup}</p>
-                <p style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', letterSpacing: '1px', textTransform: 'uppercase', marginBottom: 2 }}>Drop</p>
-                <p style={{ fontSize: 13, color: '#111', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{drop}</p>
+            {/* Call + Message */}
+            <div className="rt-actions">
+              <a href="tel:+911234567890" style={{ textDecoration: 'none' }}>
+                <button className="rt-action-btn rt-call-btn" style={{ width: '100%' }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.41 2 2 0 0 1 3.6 1.21h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.81a16 16 0 0 0 6.29 6.29l.96-.96a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/>
+                  </svg>
+                  Call
+                </button>
+              </a>
+              <button className="rt-action-btn rt-msg-btn">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                </svg>
+                Message
+              </button>
+            </div>
+
+            {/* Route */}
+            <div className="rt-route">
+              <div className="rt-route-row">
+                <div className="rt-route-dots">
+                  <div className="rt-dot-fill" />
+                  <div className="rt-dot-line" />
+                  <div className="rt-dot-empty" />
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ marginBottom: 14 }}>
+                    <div className="rt-route-label">PICKUP</div>
+                    <div className="rt-route-text">{pickup}</div>
+                  </div>
+                  <div>
+                    <div className="rt-route-label">DROP</div>
+                    <div className="rt-route-text">{drop}</div>
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
 
-          {status === 'completed' ? (
-            <div className="rd-done-banner">
-              <p style={{ fontSize: 14, fontWeight: 700, color: '#16a34a' }}>✓ Ride Completed! Redirecting...</p>
+            {/* Vehicle */}
+            <div className="rt-vehicle">
+              <div className="rt-vehicle-icon">🏍️</div>
+              <div>
+                <div className="rt-vehicle-model">{vehicleModel}</div>
+                <div className="rt-vehicle-plate">{plateNumber}</div>
+              </div>
+              <div className="rt-plate-badge">{plateNumber}</div>
             </div>
-          ) : (
-            <button className="rd-complete-btn" disabled style={{ opacity: 0.5, cursor: 'default' }}>
-              {status === 'in_progress' ? 'Ride in Progress…' : 'Waiting for Driver…'}
-            </button>
-          )}
+
+            {/* Arrived */}
+            {status === 'arrived' && (
+              <button
+                className="rt-complete-btn"
+                onClick={() => { setStatus('completed'); setTimeout(() => router.push('/'), 2500) }}
+              >
+                Complete Ride ✓
+              </button>
+            )}
+
+            {/* Completed */}
+            {status === 'completed' && (
+              <div className="rt-done-banner">✓ Ride Completed! Redirecting...</div>
+            )}
+
+          </div>
         </div>
       </div>
     </>
