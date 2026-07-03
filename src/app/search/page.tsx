@@ -43,9 +43,9 @@ export default function SearchPage() {
     setLoading(true);
     setFetchErr("");
     try {
-      const res  = await fetch(
-        `http://localhost:5000/api/vendor/nearby?type=${encodeURIComponent(vehicle)}`
-      );
+      const res = await fetch(
+  `/api/vendor/nearby?type=${encodeURIComponent(vehicle)}`
+);
       const data = await res.json();
 
       if (!data.success) throw new Error(data.message || "Failed to fetch");

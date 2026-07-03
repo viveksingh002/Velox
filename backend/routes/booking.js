@@ -28,4 +28,30 @@ router.get("/booking", async (req, res) => {
   }
 });
 
+
+// Partner accepts booking
+router.patch("/booking/:id/accept", async (req, res) => {
+  try {
+    const booking = await Booking.findByIdAndUpdate(
+      req.params.id,
+      { status: "accepted", driverName: req.body.driverName || "Driver" },
+      { new: true }
+    );
+    res.json({ success: true, data: booking });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Customer polls booking status
+router.get("/booking/:id/status", async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.id);
+    if (!booking) return res.status(404).json({ success: false });
+    res.json({ success: true, status: booking.status, driverName: booking.driverName });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 module.exports = router;
