@@ -206,9 +206,12 @@ export default function PendingRequestsPage() {
   };
 
   const handleAccept = (id: string) => {
-    setRequests((prev) => prev.filter((r) => r.id !== id));
-    showToast("✓ Ride accepted! Check Active Ride.", "accept");
-  };
+  setRequests((prev) => prev.filter((r) => r.id !== id));
+  showToast("✓ Ride accepted!", "accept");
+  setTimeout(() => {
+    window.location.href = "/partner/active-ride";
+  }, 1500);
+};
 
   const handleDecline = (id: string) => {
     setRequests((prev) => prev.filter((r) => r.id !== id));
