@@ -54,4 +54,32 @@ router.get("/booking/:id/status", async (req, res) => {
   }
 });
 
+
+// Get accepted booking for partner
+router.get("/booking/active", async (req, res) => {
+  try {
+    const booking = await Booking.findOne({ status: "accepted" }).sort({ createdAt: -1 });
+    if (!booking) return res.json({ success: true, data: null });
+    res.json({ success: true, data: booking });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// End ride
+router.patch("/booking/:id/complete", async (req, res) => {
+  try {
+    const booking = await Booking.findByIdAndUpdate(
+      req.params.id,
+      { status: "completed" },
+      { new: true }
+    );
+    res.json({ success: true, data: booking });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+
+
 module.exports = router;
