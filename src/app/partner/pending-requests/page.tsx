@@ -215,6 +215,7 @@ export default function PendingRequestsPage() {
     showToast("Ride declined.", "decline");
   };
 
+
   return (
     <div style={{ minHeight:"100vh",background:"#f3f4f6",fontFamily:"Inter,sans-serif" }}>
       <PartnerNav name={name} />
