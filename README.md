@@ -1,23 +1,6 @@
 <div align="center">
 # Vëlox 🚗
 
-### *Move Differently.*
-
-**A premium vehicle rental platform built for India — bikes, cars, SUVs, and trucks, all in one place.**
-
-[![Next.js](https://img.shields.io/badge/Next.js-15-black?style=for-the-badge&logo=next.js)](https://nextjs.org/)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?style=for-the-badge&logo=typescript)](https://www.typescriptlang.org/)
-[![Tailwind CSS](https://img.shields.io/badge/Tailwind-3-38bdf8?style=for-the-badge&logo=tailwindcss)](https://tailwindcss.com/)
-[![License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)](https://claude.ai/chat/LICENSE)
-
-![Velox Preview](https://img.shields.io/badge/Status-Live-brightgreen?style=for-the-badge)
-
-</div>
----
-
-
----
-
 ---
 
 ## ✨ Features
@@ -163,7 +146,7 @@ node server.js
 
 ## 📸 Screenshots
 
-> *Coming soon — add your own screenshots here*
+> *Coming soon — add screenshots after complete the project*
 
 ---
 
@@ -178,6 +161,5 @@ git push origin feature/your-feature
 ```
 
 ---
-
 
 </div>
