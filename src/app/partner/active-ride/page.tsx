@@ -138,7 +138,7 @@ function ActiveRideCard({ ride, onEndRide }: { ride: Booking; onEndRide: () => v
         {/* Action buttons */}
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
           <a
-            href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(ride.drop)}`}
+            href={`/partner/navigate?pickup=${encodeURIComponent(ride.pickup)}&drop=${encodeURIComponent(ride.drop)}&id=${ride._id}`}
             target="_blank"
             rel="noreferrer"
             style={{ padding: "13px", borderRadius: 12, border: "1.5px solid #e5e7eb", background: "#fff", color: "#374151", fontSize: 14, fontWeight: 600, cursor: "pointer", textDecoration: "none", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
