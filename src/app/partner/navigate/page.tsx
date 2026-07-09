@@ -300,14 +300,12 @@ export default function ActiveRidePage() {
   const showArriveCta = booking.status === "accepted";
 
   return (
-    <div style={{ minHeight: "100dvh", background: "#f5f4f0", fontFamily: "'Inter', system-ui, sans-serif" }}>
-  <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+    <div style={{ position: "fixed", inset: 0, background: "#f5f4f0", fontFamily: "'Inter', system-ui, sans-serif", overflow: "hidden" }}>
+      <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
 
-      <ClientOnly fallback={<div style={{ height: "55vh", background: "#f5f4f0" }} />}>
-  <div style={{ position: "relative", height: "55vh", width: "100%" }}>
-    <RideMap pickup={booking.pickup} drop={booking.drop} status={booking.status} />
-  </div>
-</ClientOnly>
+      <ClientOnly fallback={<div style={{ position: "absolute", inset: 0, background: "#f5f4f0" }} />}>
+        <RideMap pickup={booking.pickup} drop={booking.drop} status={booking.status} />
+      </ClientOnly>
 
       {/* Bottom sheet */}
       <div
