@@ -87,7 +87,6 @@ function RideMap({ pickup, drop, status }: { pickup: string; drop: string; statu
             );
           });
 
-        // Pehle pickup/drop geocode karo, phir GPS fallback pickup ke paas rakho
         const pickupC = await geocode(pickup).catch(() => ({ lat: 25.4484, lng: 78.5685 }));
         const dropC = await geocode(drop).catch(() => ({ lat: 25.46, lng: 78.58 }));
         const current = await getCurrentPos().catch(() => ({
@@ -134,16 +133,13 @@ function RideMap({ pickup, drop, status }: { pickup: string; drop: string; statu
         ]);
 
         map.fitBounds(bounds, {
-          paddingTopLeft: [60, 100],
-          paddingBottomRight: [60, 320],
+          paddingTopLeft: [40, 60],
+          paddingBottomRight: [40, 60],
           maxZoom: 13,
           animate: true,
         });
 
-        setTimeout(() => {
-          map.invalidateSize();
-        }, 500);
-
+        setTimeout(() => map.invalidateSize(), 300);
         setMapStatus("ready");
       } catch {
         setMapStatus("error");
@@ -157,10 +153,12 @@ function RideMap({ pickup, drop, status }: { pickup: string; drop: string; statu
     };
   }, [pickup, drop]);
 
-  const label = status === "in_progress" ? "En Route to Drop" : status === "arrived" ? "Arrived at Pickup" : "Heading to Pickup";
+  const label =
+    status === "in_progress" ? "En Route to Drop" :
+    status === "arrived" ? "Arrived at Pickup" : "Heading to Pickup";
 
   return (
-    <div style={{ position: "absolute", inset: 0 }}>
+    <div style={{ position: "relative", width: "100%", height: "100%" }}>
       <style>{`.rydex-tiles{filter:grayscale(1) contrast(0.95) brightness(1.05)}.leaflet-container{background:#f5f4f0;font-family:inherit}`}</style>
       <div ref={mapRef} style={{ position: "absolute", inset: 0 }} />
       {mapStatus === "loading" && (
@@ -168,7 +166,7 @@ function RideMap({ pickup, drop, status }: { pickup: string; drop: string; statu
           <div style={{ width: 34, height: 34, border: "3px solid #e6e6e3", borderTopColor: "#0a0a0a", borderRadius: "50%", animation: "spin 1s linear infinite" }} />
         </div>
       )}
-      <div style={{ position: "absolute", top: 20, left: "50%", transform: "translateX(-50%)", zIndex: 10, background: "#fff", padding: "8px 16px", borderRadius: 999, boxShadow: "0 8px 24px rgba(0,0,0,0.12)", display: "flex", alignItems: "center", gap: 8, fontSize: 13, fontWeight: 700, color: "#0a0a0a", whiteSpace: "nowrap" }}>
+      <div style={{ position: "absolute", top: 16, left: "50%", transform: "translateX(-50%)", zIndex: 10, background: "#fff", padding: "8px 16px", borderRadius: 999, boxShadow: "0 8px 24px rgba(0,0,0,0.12)", display: "flex", alignItems: "center", gap: 8, fontSize: 13, fontWeight: 700, color: "#0a0a0a", whiteSpace: "nowrap" }}>
         <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#eab308" }} />
         {label}
       </div>
@@ -318,6 +316,9 @@ export default function ActiveRidePage() {
   const [showThankYou, setShowThankYou] = useState(false);
   const [finalRating, setFinalRating] = useState(0);
 
+  const SHEET_COLLAPSED = "22vh";
+  const SHEET_EXPANDED = "82vh";
+
   const handleArrive = async () => {
     setArriving(true);
     await new Promise((r) => setTimeout(r, 500));
@@ -345,27 +346,48 @@ export default function ActiveRidePage() {
   const statusTitle = booking.status === "accepted" ? "Heading to Pickup" : booking.status === "arrived" ? "Arrived at Pickup" : "Ride in Progress";
   const statusSub = booking.status === "accepted" ? "Drive to the pickup location" : booking.status === "arrived" ? "Ask customer for OTP to start ride" : "Drive to the drop location";
   const showArriveCta = booking.status === "accepted";
+  const sheetH = expanded ? SHEET_EXPANDED : SHEET_COLLAPSED;
 
   if (showThankYou) {
     return (
       <div style={{ minHeight: "100svh", background: "#f3f4f6", fontFamily: "'Inter',system-ui,sans-serif", padding: "2rem 1rem" }}>
         <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
-        <ThankYouScreen booking={booking} rating={finalRating} onBack={() => window.location.href = "/partner/dashboard"} />
+        <ThankYouScreen booking={booking} rating={finalRating} onBack={() => { window.location.href = "/partner/dashboard"; }} />
       </div>
     );
   }
 
   return (
-    <div style={{ position: "fixed", inset: 0, background: "#f5f4f0", fontFamily: "'Inter',system-ui,sans-serif", overflow: "hidden" }}>
+    <div style={{
+      position: "fixed", inset: 0,
+      fontFamily: "'Inter',system-ui,sans-serif",
+      display: "flex", flexDirection: "column",
+      overflow: "hidden",
+    }}>
       <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
 
       {showRating && <RatingPopup onSubmit={handleRatingSubmit} />}
 
-      <ClientOnly fallback={<div style={{ position: "absolute", inset: 0, background: "#f5f4f0" }} />}>
-        <RideMap pickup={booking.pickup} drop={booking.drop} status={booking.status} />
-      </ClientOnly>
+      {/* MAP — fills remaining space above the bottom sheet */}
+      <div style={{ flex: 1, position: "relative", overflow: "hidden", transition: "flex 0.35s cubic-bezier(0.4,0,0.2,1)" }}>
+        <ClientOnly fallback={<div style={{ position: "absolute", inset: 0, background: "#f5f4f0" }} />}>
+          <RideMap pickup={booking.pickup} drop={booking.drop} status={booking.status} />
+        </ClientOnly>
+      </div>
 
-      <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, zIndex: 20, background: "#fff", borderTopLeftRadius: 24, borderTopRightRadius: 24, boxShadow: "0 -20px 60px rgba(0,0,0,0.18)", maxHeight: expanded ? "82vh" : "22vh", display: "flex", flexDirection: "column", transition: "max-height 0.35s cubic-bezier(0.4,0,0.2,1)" }}>
+      {/* BOTTOM SHEET — fixed height, never covers map */}
+      <div style={{
+        height: sheetH,
+        flexShrink: 0,
+        background: "#fff",
+        borderTopLeftRadius: 24,
+        borderTopRightRadius: 24,
+        boxShadow: "0 -20px 60px rgba(0,0,0,0.18)",
+        display: "flex",
+        flexDirection: "column",
+        transition: "height 0.35s cubic-bezier(0.4,0,0.2,1)",
+        position: "relative",
+      }}>
         <div onClick={() => setExpanded((e) => !e)} style={{ padding: "10px 0 6px", display: "flex", justifyContent: "center", cursor: "pointer", flexShrink: 0 }}>
           <div style={{ width: 44, height: 5, borderRadius: 999, background: "#d9d7d1" }} />
         </div>
