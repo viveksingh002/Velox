@@ -166,7 +166,7 @@ function RideMap({ pickup, drop, status }: { pickup: string; drop: string; statu
           <div style={{ width: 34, height: 34, border: "3px solid #e6e6e3", borderTopColor: "#0a0a0a", borderRadius: "50%", animation: "spin 1s linear infinite" }} />
         </div>
       )}
-      <div style={{ position: "absolute", top: 16, left: "50%", transform: "translateX(-50%)", zIndex: 10, background: "#fff", padding: "8px 16px", borderRadius: 999, boxShadow: "0 8px 24px rgba(0,0,0,0.12)", display: "flex", alignItems: "center", gap: 8, fontSize: 13, fontWeight: 700, color: "#0a0a0a", whiteSpace: "nowrap" }}>
+      <div style={{ position: "absolute", top: 16, left: "50%", transform: "translateX(-50%)", zIndex: 1000, background: "#fff", padding: "8px 16px", borderRadius: 999, boxShadow: "0 8px 24px rgba(0,0,0,0.12)", display: "flex", alignItems: "center", gap: 8, fontSize: 13, fontWeight: 700, color: "#0a0a0a", whiteSpace: "nowrap" }}>
         <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#eab308" }} />
         {label}
       </div>
