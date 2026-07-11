@@ -158,8 +158,14 @@ function RideMap({ pickup, drop, status }: { pickup: string; drop: string; statu
     status === "arrived" ? "Arrived at Pickup" : "Heading to Pickup";
 
   return (
-    <div style={{ position: "relative", width: "100%", height: "100%" }}>
-      <style>{`.rydex-tiles{filter:grayscale(1) contrast(0.95) brightness(1.05)}.leaflet-container{background:#f5f4f0;font-family:inherit}`}</style>
+    <div style={{ position: "relative", width: "100%", height: "100%",overflow: "hidden" }}>
+      <style>{`
+  .rydex-tiles{filter:grayscale(1) contrast(0.95) brightness(1.05)}
+  .leaflet-container{background:#f5f4f0;font-family:inherit}
+  .leaflet-bar{display:none !important}
+  .leaflet-control{display:none !important}
+  .leaflet-bottom, .leaflet-top{display:none !important}
+`}</style>
       <div ref={mapRef} style={{ position: "absolute", inset: 0 }} />
       {mapStatus === "loading" && (
         <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", background: "#f5f4f0", zIndex: 5 }}>
