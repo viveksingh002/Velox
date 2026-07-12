@@ -2,7 +2,6 @@ const express = require("express");
 const router  = express.Router();
 const Booking = require("../models/Booking");
 
-// POST - create booking
 router.post("/booking", async (req, res) => {
   try {
     const otp = String(Math.floor(1000 + Math.random() * 9000));
@@ -13,7 +12,6 @@ router.post("/booking", async (req, res) => {
   }
 });
 
-// GET - active booking for partner
 router.get("/booking/active", async (req, res) => {
   try {
     const booking = await Booking.findOne({
@@ -26,7 +24,6 @@ router.get("/booking/active", async (req, res) => {
   }
 });
 
-// GET - all bookings
 router.get("/booking", async (req, res) => {
   try {
     const bookings = await Booking.find().sort({ createdAt: -1 });
@@ -36,7 +33,6 @@ router.get("/booking", async (req, res) => {
   }
 });
 
-// GET - pending bookings (for partner pending-requests page)
 router.get("/booking/pending", async (req, res) => {
   try {
     const bookings = await Booking.find({ status: "pending" }).sort({ createdAt: -1 });
@@ -46,18 +42,16 @@ router.get("/booking/pending", async (req, res) => {
   }
 });
 
-// GET - booking status (customer polling)
 router.get("/booking/:id/status", async (req, res) => {
   try {
     const booking = await Booking.findById(req.params.id);
     if (!booking) return res.status(404).json({ success: false });
-    res.json({ success: true, status: booking.status, driverName: booking.driverName });
+    res.json({ success: true, status: booking.status, driverName: booking.driverName, otp: booking.otp });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
 });
 
-// PATCH - partner accepts booking
 router.patch("/booking/:id/accept", async (req, res) => {
   try {
     const booking = await Booking.findByIdAndUpdate(
@@ -71,7 +65,6 @@ router.patch("/booking/:id/accept", async (req, res) => {
   }
 });
 
-// PATCH - partner declined booking
 router.patch("/booking/:id/decline", async (req, res) => {
   try {
     const booking = await Booking.findByIdAndUpdate(
@@ -85,7 +78,6 @@ router.patch("/booking/:id/decline", async (req, res) => {
   }
 });
 
-// PATCH - partner arrived at pickup
 router.patch("/booking/:id/arrive", async (req, res) => {
   try {
     const booking = await Booking.findByIdAndUpdate(
@@ -99,7 +91,6 @@ router.patch("/booking/:id/arrive", async (req, res) => {
   }
 });
 
-// POST - verify OTP and start ride
 router.post("/booking/:id/verify-otp", async (req, res) => {
   try {
     const booking = await Booking.findById(req.params.id);
@@ -116,7 +107,6 @@ router.post("/booking/:id/verify-otp", async (req, res) => {
   }
 });
 
-// PATCH - complete ride
 router.patch("/booking/:id/complete", async (req, res) => {
   try {
     const booking = await Booking.findByIdAndUpdate(
