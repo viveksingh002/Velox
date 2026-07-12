@@ -42,7 +42,7 @@ export default function RideTrackingPage() {
       if (s === 'arrived')     setStatus('arrived')
       if (s === 'in_progress') setStatus('in_progress')
       if (s === 'completed')   setStatus('completed')
-      if ((s === 'arrived' || s === 'in_progress') && data.otp) setOtp(data.otp)
+      if (data.otp) setOtp(data.otp)
     } catch {}
   }, [bookingId])
 
@@ -136,8 +136,8 @@ export default function RideTrackingPage() {
   const etaMins = Math.ceil(eta / 60)
 
   const statusConfig = {
-    on_way:      { label: 'Driver on the Way',  dot: '#22c55e' },
-    arrived:     { label: 'Driver Arrived!',    dot: '#f59e0b' },
+    on_way:      { label: 'Driver On the Way',  dot: '#22c55e' },
+    arrived:     { label: 'Driver Has Arrived', dot: '#f59e0b' },
     in_progress: { label: 'Ride in Progress',   dot: '#3b82f6' },
     completed:   { label: 'Ride Completed',     dot: '#9ca3af' },
   }
@@ -207,14 +207,19 @@ export default function RideTrackingPage() {
             <div className="track-title">Your Ride</div>
           </div>
 
-          {otp && status === 'arrived' && (
+          {/* OTP Section */}
+          {otp && (status === 'arrived' || status === 'in_progress') && (
             <div style={{ margin: '16px 24px 0', borderRadius: 16, overflow: 'hidden', border: '1.5px solid #fde68a', animation: 'slideIn 0.35s ease' }}>
               <div style={{ background: '#111827', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 8 }}>
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#eab308" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="m21 2-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0 3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>
-                <span style={{ color: '#fff', fontWeight: 800, fontSize: 11.5, letterSpacing: 0.8 }}>DRIVER KO YE OTP BATAO</span>
+                <span style={{ color: '#fff', fontWeight: 800, fontSize: 11.5, letterSpacing: 0.8 }}>SHARE THIS OTP WITH YOUR DRIVER</span>
               </div>
               <div style={{ background: '#fefce8', padding: 16 }}>
-                <p style={{ fontSize: 12, color: '#92400e', marginBottom: 14, fontWeight: 500 }}>Tumhara driver aa gaya hai! Ye OTP driver ko batao ride start karne ke liye.</p>
+                <p style={{ fontSize: 12, color: '#92400e', marginBottom: 14, fontWeight: 500 }}>
+                  {status === 'arrived'
+                    ? 'Your driver has arrived! Share this OTP to start your ride.'
+                    : 'Your ride is in progress. Keep this OTP for your reference.'}
+                </p>
                 <div style={{ display: 'flex', gap: 10, justifyContent: 'center', marginBottom: 14 }}>
                   {otp.split('').map((d, i) => (
                     <div key={i} style={{ width: 52, height: 60, borderRadius: 12, background: '#fff', border: '1.5px solid #fde68a', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 26, fontWeight: 900, color: '#111', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
@@ -223,23 +228,36 @@ export default function RideTrackingPage() {
                   ))}
                 </div>
                 <button onClick={copyOtp} style={{ width: '100%', padding: '11px', borderRadius: 10, border: '1.5px solid #fde68a', background: otpCopied ? '#111' : '#fff', color: otpCopied ? '#fff' : '#92400e', fontSize: 13, fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s' }}>
-                  {otpCopied ? '✓ Copy ho gaya!' : 'OTP Copy Karo'}
+                  {otpCopied ? '✓ Copied to clipboard!' : 'Copy OTP'}
                 </button>
               </div>
             </div>
           )}
 
+          {/* In Progress Banner */}
           {status === 'in_progress' && (
-            <div style={{ margin: '16px 24px 0', borderRadius: 12, background: '#eff6ff', border: '1.5px solid #bfdbfe', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 10, animation: 'slideIn 0.3s ease' }}>
+            <div style={{ margin: '12px 24px 0', borderRadius: 12, background: '#eff6ff', border: '1.5px solid #bfdbfe', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 10, animation: 'slideIn 0.3s ease' }}>
               <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#3b82f6', flexShrink: 0, animation: 'pulse 1.5s infinite' }} />
-              <span style={{ fontSize: 13, fontWeight: 700, color: '#1d4ed8' }}>Ride shuru ho gayi — enjoy your trip! 🚀</span>
+              <span style={{ fontSize: 13, fontWeight: 700, color: '#1d4ed8' }}>Ride in progress — enjoy your trip! 🚀</span>
             </div>
           )}
 
+          {/* Completed Banner */}
+          {status === 'completed' && (
+            <div style={{ margin: '16px 24px 0', borderRadius: 12, background: '#f0fdf4', border: '1.5px solid #bbf7d0', padding: '16px', animation: 'slideIn 0.3s ease' }}>
+              <p style={{ fontSize: 15, fontWeight: 800, color: '#15803d', marginBottom: 4 }}>Ride Completed! 🎉</p>
+              <p style={{ fontSize: 12, color: '#166534', fontWeight: 500, marginBottom: 14 }}>Thank you for riding with us. We hope you had a great experience.</p>
+              <button onClick={() => router.push('/')} style={{ width: '100%', padding: '11px', borderRadius: 10, border: 'none', background: '#111', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+                Book Another Ride
+              </button>
+            </div>
+          )}
+
+          {/* Stats */}
           <div className="track-stats" style={{ marginTop: 16 }}>
             <div className="track-stat">
               <div className="track-stat-label">ETA</div>
-              <div className="track-stat-val">{etaMins} min</div>
+              <div className="track-stat-val">{etaMins > 0 ? `${etaMins} min` : 'Arrived'}</div>
             </div>
             <div className="track-stat" style={{ background: '#111' }}>
               <div className="track-stat-label" style={{ color: 'rgba(255,255,255,.5)' }}>FARE</div>
@@ -247,6 +265,7 @@ export default function RideTrackingPage() {
             </div>
           </div>
 
+          {/* Driver */}
           <div className="track-driver">
             <div className="track-driver-avatar">
               {driverName.split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase()}
@@ -254,23 +273,28 @@ export default function RideTrackingPage() {
             <div style={{ flex: 1 }}>
               <div className="track-driver-name">{driverName}</div>
               <div className="track-driver-sub">{vehicle.charAt(0).toUpperCase() + vehicle.slice(1)}</div>
-              <div className="track-pay-badge">✓ {payMethod === 'cash' ? 'Cash' : 'Online'}</div>
+              <div className="track-pay-badge">✓ {payMethod === 'cash' ? 'Cash Payment' : 'Online Payment'}</div>
             </div>
             <a href="tel:+919999999999" style={{ width: 36, height: 36, borderRadius: '50%', background: '#111', display: 'flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'none' }}>
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.41 2 2 0 0 1 3.6 1.21h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.81a16 16 0 0 0 6.29 6.29l.96-.96a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
             </a>
           </div>
 
+          {/* Actions */}
           <div className="track-actions">
             <button className="track-btn track-btn-light">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
               Message
             </button>
-            <button className="track-btn track-btn-dark" onClick={() => { if (confirm('Cancel this ride?')) router.push('/') }}>
+            <button
+              className="track-btn track-btn-dark"
+              onClick={() => { if (confirm('Are you sure you want to cancel this ride?')) router.push('/') }}
+            >
               Cancel Ride
             </button>
           </div>
 
+          {/* Route */}
           <div className="track-route">
             <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', letterSpacing: '1.2px', textTransform: 'uppercase', marginBottom: 12 }}>ROUTE</div>
             <div className="track-route-row">
@@ -292,6 +316,7 @@ export default function RideTrackingPage() {
             </div>
           </div>
 
+          {/* Vehicle */}
           <div className="track-vehicle">
             <div>
               <div className="track-vehicle-label">VEHICLE</div>
