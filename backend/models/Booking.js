@@ -7,11 +7,13 @@ const bookingSchema = new mongoose.Schema({
   model:              { type: String, default: "" },
   registrationNumber: { type: String, default: "" },
   price:              Number,
-  status:             { type: String, default: "pending" }, // pending, accepted, arrived, in_progress, completed, cancelled
+  status:             { type: String, default: "pending" },
   driverName:         { type: String, default: "" },
   customerName:       { type: String, default: "Customer" },
   customerPhone:      { type: String, default: "" },
-  paymentStatus:      { type: String, default: "cash" },    // cash, paid
+  paymentStatus:      { type: String, default: "cash" },
   otp:                { type: String, default: "" },
   createdAt:          { type: Date, default: Date.now },
 });
+
+module.exports = mongoose.model("Booking", bookingSchema);
