@@ -4,7 +4,7 @@ const Booking = require("../models/Booking");
 
 router.post("/booking", async (req, res) => {
   try {
-    const otp = String(Math.floor(1000 + Math.random() * 9000));
+    const otp     = String(Math.floor(1000 + Math.random() * 9000));
     const booking = await Booking.create({ ...req.body, otp });
     res.json({ success: true, data: booking });
   } catch (err) {
@@ -80,11 +80,15 @@ router.patch("/booking/:id/decline", async (req, res) => {
 
 router.patch("/booking/:id/arrive", async (req, res) => {
   try {
-    const booking = await Booking.findByIdAndUpdate(
-      req.params.id,
-      { status: "arrived" },
-      { new: true }
-    );
+    const existing = await Booking.findById(req.params.id);
+    if (!existing) return res.status(404).json({ success: false, message: "Booking not found" });
+
+    const updateData = { status: "arrived" };
+    if (!existing.otp || existing.otp.trim() === "") {
+      updateData.otp = String(Math.floor(1000 + Math.random() * 9000));
+    }
+
+    const booking = await Booking.findByIdAndUpdate(req.params.id, updateData, { new: true });
     res.json({ success: true, data: booking });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
