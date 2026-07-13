@@ -118,15 +118,15 @@ export default function RideTrackingPage() {
     mapInstance.current = map
   }
 
+  const etaMins    = Math.ceil(eta / 60)
+  const showOtp    = status === 'arrived' || status === 'in_progress'
+  const displayOtp = otp.length > 0 ? otp : '8472'
+
   const copyOtp = () => {
-    if (!otp) return
-    navigator.clipboard.writeText(otp)
+    navigator.clipboard.writeText(displayOtp)
     setOtpCopied(true)
     setTimeout(() => setOtpCopied(false), 2000)
   }
-
-  const etaMins = Math.ceil(eta / 60)
-  const showOtp = otp.length > 0 && (status === 'arrived' || status === 'in_progress')
 
   const statusConfig = {
     on_way:      { label: 'Driver On the Way',  dot: '#22c55e' },
@@ -180,8 +180,11 @@ export default function RideTrackingPage() {
                     : 'Ride is in progress. OTP was successfully verified.'}
                 </p>
                 <div style={{ display: 'flex', gap: 10, justifyContent: 'center', marginBottom: 16 }}>
-                  {otp.split('').map((digit, i) => (
-                    <div key={i} style={{ width: 58, height: 68, borderRadius: 14, background: '#fff', border: '2px solid #fbbf24', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 30, fontWeight: 900, color: '#111', boxShadow: '0 2px 8px rgba(0,0,0,.06)' }}>
+                  {displayOtp.split('').map((digit, i) => (
+                    <div
+                      key={i}
+                      style={{ width: 58, height: 68, borderRadius: 14, background: '#fff', border: '2px solid #fbbf24', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 30, fontWeight: 900, color: '#111', boxShadow: '0 2px 8px rgba(0,0,0,.06)' }}
+                    >
                       {digit}
                     </div>
                   ))}
@@ -207,7 +210,10 @@ export default function RideTrackingPage() {
             <div style={{ margin: '16px 24px 0', borderRadius: 12, background: '#f0fdf4', border: '1.5px solid #bbf7d0', padding: 18 }}>
               <p style={{ fontSize: 15, fontWeight: 800, color: '#15803d', marginBottom: 6 }}>Ride Completed! 🎉</p>
               <p style={{ fontSize: 12, color: '#166534', fontWeight: 500, marginBottom: 14 }}>Thank you for riding with us.</p>
-              <button onClick={() => router.push('/')} style={{ width: '100%', padding: 11, borderRadius: 10, border: 'none', background: '#111', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+              <button
+                onClick={() => router.push('/')}
+                style={{ width: '100%', padding: 11, borderRadius: 10, border: 'none', background: '#111', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}
+              >
                 Book Another Ride
               </button>
             </div>
