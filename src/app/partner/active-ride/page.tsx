@@ -17,15 +17,16 @@ interface Booking {
 
 function PartnerNav({ name }: { name: string }) {
   const initials = name.split(" ").map((w) => w[0]).join("").toUpperCase().slice(0, 2) || "V";
+  const links = [
+    { label: "Active Ride", href: "/partner/active-ride" },
+    { label: "Pending Requests", href: "/partner/pending-requests" },
+    { label: "My Bookings", href: "/partner/bookings" },
+  ];
   return (
     <div style={{ background: "#111827", padding: "0 32px", display: "flex", alignItems: "center", justifyContent: "space-between", height: 60, marginBottom: 32 }}>
       <span style={{ fontSize: 18, fontWeight: 800, color: "#fff", letterSpacing: "-0.5px", fontStyle: "italic" }}>Vëlox</span>
       <div style={{ display: "flex", gap: 32 }}>
-        {[
-          { label: "Active Ride", href: "/partner/active-ride" },
-          { label: "Pending Requests", href: "/partner/pending-requests" },
-          { label: "My Bookings", href: "/partner/bookings" },
-        ].map((l) => (
+        {links.map((l) => (
           <a key={l.label} href={l.href} style={{ fontSize: 13.5, color: l.label === "Active Ride" ? "#fff" : "rgba(255,255,255,0.55)", textDecoration: "none", fontWeight: l.label === "Active Ride" ? 700 : 500 }}>{l.label}</a>
         ))}
       </div>
@@ -37,6 +38,7 @@ function PartnerNav({ name }: { name: string }) {
 function StatusBadge({ status }: { status: string }) {
   const map: Record<string, { label: string; bg: string; color: string; dot: string }> = {
     accepted:    { label: "Waiting for customer", bg: "#fefce8", color: "#854d0e", dot: "#eab308" },
+    arrived:     { label: "Arrived at pickup",     bg: "#fefce8", color: "#854d0e", dot: "#f59e0b" },
     in_progress: { label: "Ride in progress",     bg: "#f0fdf4", color: "#15803d", dot: "#22c55e" },
     completed:   { label: "Completed",            bg: "#f3f4f6", color: "#374151", dot: "#9ca3af" },
   };
@@ -76,12 +78,18 @@ function ActiveRideCard({ ride, onEndRide }: { ride: Booking; onEndRide: () => v
     }
   };
 
-  // Vehicle emoji
+  const openNavigate = () => {
+    const url =
+      "/partner/navigate?pickup=" + encodeURIComponent(ride.pickup) +
+      "&drop=" + encodeURIComponent(ride.drop) +
+      "&id=" + ride._id;
+    window.open(url, "_blank");
+  };
+
   const vehicleEmoji: Record<string, string> = { bike: "🏍️", car: "🚗", auto: "🛺", truck: "🚛", loading: "🚐" };
 
   return (
     <div style={{ background: "#fff", borderRadius: 16, border: "1px solid #e5e7eb", overflow: "hidden", marginBottom: 20 }}>
-      {/* Header */}
       <div style={{ background: "#111827", padding: "18px 24px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div>
           <p style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.45)", letterSpacing: "1.2px", textTransform: "uppercase", marginBottom: 4 }}>Ride ID</p>
@@ -95,7 +103,6 @@ function ActiveRideCard({ ride, onEndRide }: { ride: Booking; onEndRide: () => v
 
       <div style={{ padding: "20px 24px" }}>
 
-        {/* Vehicle badge */}
         <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 16px", background: "#f9fafb", borderRadius: 12, marginBottom: 20, border: "1px solid #f3f4f6" }}>
           <span style={{ fontSize: 24 }}>{vehicleEmoji[ride.vehicle] || "🚗"}</span>
           <div>
@@ -104,7 +111,6 @@ function ActiveRideCard({ ride, onEndRide }: { ride: Booking; onEndRide: () => v
           </div>
         </div>
 
-        {/* Route */}
         <div style={{ display: "flex", gap: 14, alignItems: "flex-start", marginBottom: 20 }}>
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", paddingTop: 3 }}>
             <div style={{ width: 10, height: 10, borderRadius: "50%", background: "#22c55e", border: "2px solid #fff", boxShadow: "0 0 0 2px #22c55e" }} />
@@ -123,7 +129,6 @@ function ActiveRideCard({ ride, onEndRide }: { ride: Booking; onEndRide: () => v
           </div>
         </div>
 
-        {/* Fare */}
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 20 }}>
           <div style={{ background: "#f9fafb", borderRadius: 12, padding: "12px 14px", border: "1px solid #f3f4f6" }}>
             <p style={{ fontSize: 10, fontWeight: 700, color: "#9ca3af", letterSpacing: "1px", textTransform: "uppercase", marginBottom: 5 }}>Fare</p>
@@ -131,20 +136,17 @@ function ActiveRideCard({ ride, onEndRide }: { ride: Booking; onEndRide: () => v
           </div>
           <div style={{ background: "#f9fafb", borderRadius: 12, padding: "12px 14px", border: "1px solid #f3f4f6" }}>
             <p style={{ fontSize: 10, fontWeight: 700, color: "#9ca3af", letterSpacing: "1px", textTransform: "uppercase", marginBottom: 5 }}>Status</p>
-            <p style={{ fontSize: 14, fontWeight: 700, color: "#111827", textTransform: "capitalize" }}>{ride.status}</p>
+            <p style={{ fontSize: 14, fontWeight: 700, color: "#111827", textTransform: "capitalize" }}>{ride.status.replace("_", " ")}</p>
           </div>
         </div>
 
-        {/* Action buttons */}
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-          <a
-            href={`/partner/navigate?pickup=${encodeURIComponent(ride.pickup)}&drop=${encodeURIComponent(ride.drop)}&id=${ride._id}`}
-            target="_blank"
-            rel="noreferrer"
-            style={{ padding: "13px", borderRadius: 12, border: "1.5px solid #e5e7eb", background: "#fff", color: "#374151", fontSize: 14, fontWeight: 600, cursor: "pointer", textDecoration: "none", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+          <button
+            onClick={openNavigate}
+            style={{ padding: "13px", borderRadius: 12, border: "1.5px solid #e5e7eb", background: "#fff", color: "#374151", fontSize: 14, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
             Navigate
-          </a>
+          </button>
           <button
             onClick={handleEndRide}
             disabled={ending}
@@ -157,22 +159,14 @@ function ActiveRideCard({ ride, onEndRide }: { ride: Booking; onEndRide: () => v
   );
 }
 
-function RideCompleted({ onBack }: { onBack: () => void }) {
+function RideCompleted() {
   return (
     <div style={{ background: "#fff", borderRadius: 16, border: "1px solid #e5e7eb", padding: "56px 32px", textAlign: "center" }}>
       <div style={{ width: 72, height: 72, borderRadius: "50%", background: "#dcfce7", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 20px" }}>
         <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
       </div>
       <h3 style={{ fontSize: 22, fontWeight: 700, color: "#111827", marginBottom: 8 }}>Ride Completed! 🎉</h3>
-      <p style={{ fontSize: 14, color: "#9ca3af", lineHeight: 1.6, marginBottom: 24 }}>Great job! The ride has been marked as completed.</p>
-      <div style={{ display: "flex", gap: 10, justifyContent: "center" }}>
-        <a href="/partner/bookings" style={{ padding: "11px 24px", background: "#f3f4f6", color: "#374151", borderRadius: 12, fontSize: 14, fontWeight: 600, textDecoration: "none" }}>
-          View Bookings
-        </a>
-        <button onClick={onBack} style={{ padding: "11px 24px", background: "#111827", color: "#fff", borderRadius: 12, fontSize: 14, fontWeight: 600, border: "none", cursor: "pointer" }}>
-          Back to Dashboard
-        </button>
-      </div>
+      <p style={{ fontSize: 14, color: "#9ca3af", lineHeight: 1.6 }}>Great job! The ride has been marked as completed.</p>
     </div>
   );
 }
@@ -186,16 +180,15 @@ function NoRide() {
         </svg>
       </div>
       <h3 style={{ fontSize: 18, fontWeight: 700, color: "#111827", marginBottom: 8 }}>No active ride</h3>
-      <p style={{ fontSize: 14, color: "#9ca3af", lineHeight: 1.6 }}>You don't have an ongoing ride right now.<br />New requests will appear in Pending Requests.</p>
+      <p style={{ fontSize: 14, color: "#9ca3af", lineHeight: 1.6 }}>You do not have an ongoing ride right now. New requests will appear in Pending Requests.</p>
       <a href="/partner/pending-requests" style={{ display: "inline-block", marginTop: 24, padding: "11px 24px", background: "#111827", color: "#fff", borderRadius: 12, fontSize: 14, fontWeight: 600, textDecoration: "none" }}>
-        View Pending Requests →
+        View Pending Requests
       </a>
     </div>
   );
 }
 
 export default function ActiveRidePage() {
-  const router = useRouter();
   const [name,      setName]      = useState("Vendor");
   const [ride,      setRide]      = useState<Booking | null>(null);
   const [loading,   setLoading]   = useState(true);
@@ -211,9 +204,17 @@ export default function ActiveRidePage() {
       const res  = await fetch(`${API}/booking/active`);
       const data = await res.json();
       if (data.success && data.data) {
-        setRide(data.data);
+        if (data.data.status === "completed") {
+          setCompleted(true);
+          setRide(null);
+        } else {
+          setRide(data.data);
+        }
       } else {
-        setRide(null);
+        setRide((prev) => {
+          if (prev) setCompleted(true);
+          return null;
+        });
       }
     } catch {
       // silent fail
@@ -222,11 +223,36 @@ export default function ActiveRidePage() {
     }
   }, []);
 
+  const checkRideStatus = useCallback(async (id: string) => {
+    try {
+      const res  = await fetch(`${API}/booking/${id}/status`);
+      const data = await res.json();
+      if (data.success && data.status === "completed") {
+        setCompleted(true);
+        setRide(null);
+      }
+    } catch {
+      // silent fail
+    }
+  }, []);
+
   useEffect(() => {
     fetchActiveRide();
-    const interval = setInterval(fetchActiveRide, 8000);
+    const interval = setInterval(fetchActiveRide, 5000);
     return () => clearInterval(interval);
   }, [fetchActiveRide]);
+
+  useEffect(() => {
+    if (!ride) return;
+    const interval = setInterval(() => checkRideStatus(ride._id), 5000);
+    return () => clearInterval(interval);
+  }, [ride, checkRideStatus]);
+
+  useEffect(() => {
+    if (!completed) return;
+    const t = setTimeout(() => setCompleted(false), 5000);
+    return () => clearTimeout(t);
+  }, [completed]);
 
   const handleEndRide = () => {
     setCompleted(true);
@@ -253,7 +279,7 @@ export default function ActiveRidePage() {
         </div>
 
         {completed
-          ? <RideCompleted onBack={() => router.push("/partner/dashboard")} />
+          ? <RideCompleted />
           : ride
             ? <ActiveRideCard ride={ride} onEndRide={handleEndRide} />
             : <NoRide />
