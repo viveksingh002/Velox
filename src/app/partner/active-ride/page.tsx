@@ -1,7 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, useCallback, useRef } from "react";
 
 const API = "http://localhost:5000/api";
 
@@ -56,9 +55,12 @@ function ActiveRideCard({ ride, onEndRide }: { ride: Booking; onEndRide: () => v
   const [ending,  setEnding]  = useState(false);
 
   useEffect(() => {
-    const t = setInterval(() => setElapsed((e) => e + 1), 1000);
+    const start = new Date(ride.createdAt).getTime();
+    const tick = () => setElapsed(Math.max(0, Math.floor((Date.now() - start) / 1000)));
+    tick();
+    const t = setInterval(tick, 1000);
     return () => clearInterval(t);
-  }, []);
+  }, [ride.createdAt]);
 
   const mins = Math.floor(elapsed / 60).toString().padStart(2, "0");
   const secs = (elapsed % 60).toString().padStart(2, "0");
@@ -159,14 +161,29 @@ function ActiveRideCard({ ride, onEndRide }: { ride: Booking; onEndRide: () => v
   );
 }
 
-function RideCompleted() {
+function RideCompleted({ durationSecs, fare }: { durationSecs: number; fare: number }) {
+  const mins = Math.floor(durationSecs / 60);
+  const secs = durationSecs % 60;
+  const durationText = mins > 0 ? `${mins} min ${secs} sec` : `${secs} sec`;
+
   return (
-    <div style={{ background: "#fff", borderRadius: 16, border: "1px solid #e5e7eb", padding: "56px 32px", textAlign: "center" }}>
+    <div style={{ background: "#fff", borderRadius: 16, border: "1px solid #e5e7eb", padding: "48px 32px", textAlign: "center" }}>
       <div style={{ width: 72, height: 72, borderRadius: "50%", background: "#dcfce7", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 20px" }}>
         <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
       </div>
       <h3 style={{ fontSize: 22, fontWeight: 700, color: "#111827", marginBottom: 8 }}>Ride Completed! 🎉</h3>
-      <p style={{ fontSize: 14, color: "#9ca3af", lineHeight: 1.6 }}>Great job! The ride has been marked as completed.</p>
+      <p style={{ fontSize: 14, color: "#9ca3af", lineHeight: 1.6, marginBottom: 24 }}>Great job! The ride has been marked as completed.</p>
+
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, maxWidth: 360, margin: "0 auto" }}>
+        <div style={{ background: "#f9fafb", borderRadius: 12, padding: "14px 16px", border: "1px solid #f3f4f6" }}>
+          <p style={{ fontSize: 10, fontWeight: 800, color: "#9ca3af", letterSpacing: "1.2px", textTransform: "uppercase", marginBottom: 6 }}>Ride Duration</p>
+          <p style={{ fontSize: 18, fontWeight: 800, color: "#111827" }}>{durationText}</p>
+        </div>
+        <div style={{ background: "#f9fafb", borderRadius: 12, padding: "14px 16px", border: "1px solid #f3f4f6" }}>
+          <p style={{ fontSize: 10, fontWeight: 800, color: "#9ca3af", letterSpacing: "1.2px", textTransform: "uppercase", marginBottom: 6 }}>Fare Earned</p>
+          <p style={{ fontSize: 18, fontWeight: 800, color: "#111827" }}>₹{fare}</p>
+        </div>
+      </div>
     </div>
   );
 }
@@ -193,10 +210,27 @@ export default function ActiveRidePage() {
   const [ride,      setRide]      = useState<Booking | null>(null);
   const [loading,   setLoading]   = useState(true);
   const [completed, setCompleted] = useState(false);
+  const [summary,   setSummary]   = useState<{ durationSecs: number; fare: number } | null>(null);
+
+  const rideRef = useRef<Booking | null>(null);
+  useEffect(() => { rideRef.current = ride; }, [ride]);
 
   useEffect(() => {
     const saved = localStorage.getItem("velox_vendor_name");
     if (saved) setName(saved);
+  }, []);
+
+  const markCompleted = useCallback(() => {
+    const r = rideRef.current;
+    if (r) {
+      const start = new Date(r.createdAt).getTime();
+      const durationSecs = Math.max(0, Math.floor((Date.now() - start) / 1000));
+      setSummary({ durationSecs, fare: r.price });
+    } else {
+      setSummary({ durationSecs: 0, fare: 0 });
+    }
+    setCompleted(true);
+    setRide(null);
   }, []);
 
   const fetchActiveRide = useCallback(async () => {
@@ -205,36 +239,32 @@ export default function ActiveRidePage() {
       const data = await res.json();
       if (data.success && data.data) {
         if (data.data.status === "completed") {
-          setCompleted(true);
-          setRide(null);
+          markCompleted();
         } else {
           setRide(data.data);
         }
       } else {
-        setRide((prev) => {
-          if (prev) setCompleted(true);
-          return null;
-        });
+        if (rideRef.current) markCompleted();
+        else setRide(null);
       }
     } catch {
       // silent fail
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [markCompleted]);
 
   const checkRideStatus = useCallback(async (id: string) => {
     try {
       const res  = await fetch(`${API}/booking/${id}/status`);
       const data = await res.json();
       if (data.success && data.status === "completed") {
-        setCompleted(true);
-        setRide(null);
+        markCompleted();
       }
     } catch {
       // silent fail
     }
-  }, []);
+  }, [markCompleted]);
 
   useEffect(() => {
     fetchActiveRide();
@@ -250,13 +280,12 @@ export default function ActiveRidePage() {
 
   useEffect(() => {
     if (!completed) return;
-    const t = setTimeout(() => setCompleted(false), 5000);
+    const t = setTimeout(() => { setCompleted(false); setSummary(null); }, 5000);
     return () => clearTimeout(t);
   }, [completed]);
 
   const handleEndRide = () => {
-    setCompleted(true);
-    setRide(null);
+    markCompleted();
   };
 
   if (loading) return (
@@ -276,10 +305,11 @@ export default function ActiveRidePage() {
             <p style={{ fontSize: 14, color: "#6b7280" }}>Your current trip details</p>
           </div>
           {ride && <StatusBadge status={ride.status} />}
+          {completed && <StatusBadge status="completed" />}
         </div>
 
-        {completed
-          ? <RideCompleted />
+        {completed && summary
+          ? <RideCompleted durationSecs={summary.durationSecs} fare={summary.fare} />
           : ride
             ? <ActiveRideCard ride={ride} onEndRide={handleEndRide} />
             : <NoRide />
