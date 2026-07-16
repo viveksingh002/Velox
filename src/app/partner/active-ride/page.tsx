@@ -14,6 +14,14 @@ interface Booking {
   createdAt: string;
 }
 
+type FinishType = "completed" | "cancelled";
+
+interface Finished {
+  type: FinishType;
+  durationSecs: number;
+  fare: number;
+}
+
 function PartnerNav({ name }: { name: string }) {
   const initials = name.split(" ").map((w) => w[0]).join("").toUpperCase().slice(0, 2) || "V";
   const links = [
@@ -40,6 +48,7 @@ function StatusBadge({ status }: { status: string }) {
     arrived:     { label: "Arrived at pickup",     bg: "#fefce8", color: "#854d0e", dot: "#f59e0b" },
     in_progress: { label: "Ride in progress",     bg: "#f0fdf4", color: "#15803d", dot: "#22c55e" },
     completed:   { label: "Completed",            bg: "#f3f4f6", color: "#374151", dot: "#9ca3af" },
+    cancelled:   { label: "Cancelled",            bg: "#fef2f2", color: "#b91c1c", dot: "#ef4444" },
   };
   const s = map[status] || map.accepted;
   return (
@@ -188,6 +197,29 @@ function RideCompleted({ durationSecs, fare }: { durationSecs: number; fare: num
   );
 }
 
+function RideCancelled({ durationSecs }: { durationSecs: number }) {
+  const mins = Math.floor(durationSecs / 60);
+  const secs = durationSecs % 60;
+  const durationText = mins > 0 ? `${mins} min ${secs} sec` : `${secs} sec`;
+
+  return (
+    <div style={{ background: "#fff", borderRadius: 16, border: "1px solid #e5e7eb", padding: "48px 32px", textAlign: "center" }}>
+      <div style={{ width: 72, height: 72, borderRadius: "50%", background: "#fee2e2", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 20px" }}>
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#dc2626" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+      </div>
+      <h3 style={{ fontSize: 22, fontWeight: 700, color: "#111827", marginBottom: 8 }}>Ride Cancelled</h3>
+      <p style={{ fontSize: 14, color: "#9ca3af", lineHeight: 1.6, marginBottom: 24 }}>This ride has been cancelled. No fare has been charged.</p>
+
+      <div style={{ maxWidth: 220, margin: "0 auto" }}>
+        <div style={{ background: "#f9fafb", borderRadius: 12, padding: "14px 16px", border: "1px solid #f3f4f6" }}>
+          <p style={{ fontSize: 10, fontWeight: 800, color: "#9ca3af", letterSpacing: "1.2px", textTransform: "uppercase", marginBottom: 6 }}>Time Elapsed</p>
+          <p style={{ fontSize: 18, fontWeight: 800, color: "#111827" }}>{durationText}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function NoRide() {
   return (
     <div style={{ background: "#fff", borderRadius: 16, border: "1px solid #e5e7eb", padding: "64px 32px", textAlign: "center" }}>
@@ -206,30 +238,31 @@ function NoRide() {
 }
 
 export default function ActiveRidePage() {
-  const [name,      setName]      = useState("Vendor");
-  const [ride,      setRide]      = useState<Booking | null>(null);
-  const [loading,   setLoading]   = useState(true);
-  const [completed, setCompleted] = useState(false);
-  const [summary,   setSummary]   = useState<{ durationSecs: number; fare: number } | null>(null);
+  const [name,     setName]     = useState("Vendor");
+  const [ride,     setRide]     = useState<Booking | null>(null);
+  const [loading,  setLoading]  = useState(true);
+  const [finished, setFinished] = useState<Finished | null>(null);
 
   const rideRef = useRef<Booking | null>(null);
   useEffect(() => { rideRef.current = ride; }, [ride]);
+
+  const finishedIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     const saved = localStorage.getItem("velox_vendor_name");
     if (saved) setName(saved);
   }, []);
 
-  const markCompleted = useCallback(() => {
+  const finishRide = useCallback((type: FinishType) => {
     const r = rideRef.current;
     if (r) {
+      finishedIdRef.current = r._id;
       const start = new Date(r.createdAt).getTime();
       const durationSecs = Math.max(0, Math.floor((Date.now() - start) / 1000));
-      setSummary({ durationSecs, fare: r.price });
+      setFinished({ type, durationSecs, fare: type === "completed" ? r.price : 0 });
     } else {
-      setSummary({ durationSecs: 0, fare: 0 });
+      setFinished({ type, durationSecs: 0, fare: 0 });
     }
-    setCompleted(true);
     setRide(null);
   }, []);
 
@@ -238,13 +271,17 @@ export default function ActiveRidePage() {
       const res  = await fetch(`${API}/booking/active`);
       const data = await res.json();
       if (data.success && data.data) {
-        if (data.data.status === "completed") {
-          markCompleted();
+        if (data.data._id === finishedIdRef.current) {
+          setRide(null);
+        } else if (data.data.status === "completed") {
+          finishRide("completed");
+        } else if (data.data.status === "cancelled") {
+          finishRide("cancelled");
         } else {
           setRide(data.data);
         }
       } else {
-        if (rideRef.current) markCompleted();
+        if (rideRef.current) finishRide("completed");
         else setRide(null);
       }
     } catch {
@@ -252,19 +289,21 @@ export default function ActiveRidePage() {
     } finally {
       setLoading(false);
     }
-  }, [markCompleted]);
+  }, [finishRide]);
 
   const checkRideStatus = useCallback(async (id: string) => {
     try {
       const res  = await fetch(`${API}/booking/${id}/status`);
       const data = await res.json();
       if (data.success && data.status === "completed") {
-        markCompleted();
+        finishRide("completed");
+      } else if (data.success && data.status === "cancelled") {
+        finishRide("cancelled");
       }
     } catch {
       // silent fail
     }
-  }, [markCompleted]);
+  }, [finishRide]);
 
   useEffect(() => {
     fetchActiveRide();
@@ -279,13 +318,13 @@ export default function ActiveRidePage() {
   }, [ride, checkRideStatus]);
 
   useEffect(() => {
-    if (!completed) return;
-    const t = setTimeout(() => { setCompleted(false); setSummary(null); }, 5000);
+    if (!finished) return;
+    const t = setTimeout(() => setFinished(null), 5000);
     return () => clearTimeout(t);
-  }, [completed]);
+  }, [finished]);
 
   const handleEndRide = () => {
-    markCompleted();
+    finishRide("completed");
   };
 
   if (loading) return (
@@ -305,11 +344,13 @@ export default function ActiveRidePage() {
             <p style={{ fontSize: 14, color: "#6b7280" }}>Your current trip details</p>
           </div>
           {ride && <StatusBadge status={ride.status} />}
-          {completed && <StatusBadge status="completed" />}
+          {finished && <StatusBadge status={finished.type} />}
         </div>
 
-        {completed && summary
-          ? <RideCompleted durationSecs={summary.durationSecs} fare={summary.fare} />
+        {finished
+          ? finished.type === "completed"
+            ? <RideCompleted durationSecs={finished.durationSecs} fare={finished.fare} />
+            : <RideCancelled durationSecs={finished.durationSecs} />
           : ride
             ? <ActiveRideCard ride={ride} onEndRide={handleEndRide} />
             : <NoRide />
