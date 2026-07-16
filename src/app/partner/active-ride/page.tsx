@@ -14,14 +14,6 @@ interface Booking {
   createdAt: string;
 }
 
-type FinishType = "completed" | "cancelled";
-
-interface Finished {
-  type: FinishType;
-  durationSecs: number;
-  fare: number;
-}
-
 function PartnerNav({ name }: { name: string }) {
   const initials = name.split(" ").map((w) => w[0]).join("").toUpperCase().slice(0, 2) || "V";
   const links = [
@@ -59,9 +51,10 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
-function ActiveRideCard({ ride, onEndRide }: { ride: Booking; onEndRide: () => void }) {
+function ActiveRideCard({ ride, onEndRide, onCancelRide }: { ride: Booking; onEndRide: () => void; onCancelRide: () => void }) {
   const [elapsed, setElapsed] = useState(0);
   const [ending,  setEnding]  = useState(false);
+  const [cancelling, setCancelling] = useState(false);
 
   useEffect(() => {
     const start = new Date(ride.createdAt).getTime();
@@ -86,6 +79,21 @@ function ActiveRideCard({ ride, onEndRide }: { ride: Booking; onEndRide: () => v
     } catch {
       alert("Could not end ride. Try again.");
       setEnding(false);
+    }
+  };
+
+  const handleCancelRide = async () => {
+    if (!confirm("Cancel this ride?")) return;
+    setCancelling(true);
+    try {
+      await fetch(`${API}/booking/${ride._id}/cancel`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+      });
+      onCancelRide();
+    } catch {
+      alert("Could not cancel ride. Try again.");
+      setCancelling(false);
     }
   };
 
@@ -151,7 +159,7 @@ function ActiveRideCard({ ride, onEndRide }: { ride: Booking; onEndRide: () => v
           </div>
         </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 10 }}>
           <button
             onClick={openNavigate}
             style={{ padding: "13px", borderRadius: 12, border: "1.5px solid #e5e7eb", background: "#fff", color: "#374151", fontSize: 14, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
@@ -160,11 +168,18 @@ function ActiveRideCard({ ride, onEndRide }: { ride: Booking; onEndRide: () => v
           </button>
           <button
             onClick={handleEndRide}
-            disabled={ending}
-            style={{ padding: "13px", borderRadius: 12, border: "none", background: ending ? "#6b7280" : "#ef4444", color: "#fff", fontSize: 14, fontWeight: 600, cursor: ending ? "not-allowed" : "pointer" }}>
+            disabled={ending || cancelling}
+            style={{ padding: "13px", borderRadius: 12, border: "none", background: ending ? "#6b7280" : "#ef4444", color: "#fff", fontSize: 14, fontWeight: 600, cursor: ending || cancelling ? "not-allowed" : "pointer" }}>
             {ending ? "Ending..." : "End Ride"}
           </button>
         </div>
+
+        <button
+          onClick={handleCancelRide}
+          disabled={ending || cancelling}
+          style={{ width: "100%", padding: "12px", borderRadius: 12, border: "1.5px solid #fecaca", background: "#fff", color: "#dc2626", fontSize: 13.5, fontWeight: 600, cursor: ending || cancelling ? "not-allowed" : "pointer" }}>
+          {cancelling ? "Cancelling..." : "Cancel Ride"}
+        </button>
       </div>
     </div>
   );
@@ -197,25 +212,17 @@ function RideCompleted({ durationSecs, fare }: { durationSecs: number; fare: num
   );
 }
 
-function RideCancelled({ durationSecs }: { durationSecs: number }) {
-  const mins = Math.floor(durationSecs / 60);
-  const secs = durationSecs % 60;
-  const durationText = mins > 0 ? `${mins} min ${secs} sec` : `${secs} sec`;
-
+function RideCancelled({ reason }: { reason?: string }) {
   return (
     <div style={{ background: "#fff", borderRadius: 16, border: "1px solid #e5e7eb", padding: "48px 32px", textAlign: "center" }}>
       <div style={{ width: 72, height: 72, borderRadius: "50%", background: "#fee2e2", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 20px" }}>
-        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#dc2626" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#dc2626" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M15 9l-6 6M9 9l6 6"/></svg>
       </div>
       <h3 style={{ fontSize: 22, fontWeight: 700, color: "#111827", marginBottom: 8 }}>Ride Cancelled</h3>
-      <p style={{ fontSize: 14, color: "#9ca3af", lineHeight: 1.6, marginBottom: 24 }}>This ride has been cancelled. No fare has been charged.</p>
-
-      <div style={{ maxWidth: 220, margin: "0 auto" }}>
-        <div style={{ background: "#f9fafb", borderRadius: 12, padding: "14px 16px", border: "1px solid #f3f4f6" }}>
-          <p style={{ fontSize: 10, fontWeight: 800, color: "#9ca3af", letterSpacing: "1.2px", textTransform: "uppercase", marginBottom: 6 }}>Time Elapsed</p>
-          <p style={{ fontSize: 18, fontWeight: 800, color: "#111827" }}>{durationText}</p>
-        </div>
-      </div>
+      <p style={{ fontSize: 14, color: "#9ca3af", lineHeight: 1.6, marginBottom: 24 }}>{reason || "This ride was cancelled."}</p>
+      <a href="/partner/pending-requests" style={{ display: "inline-block", padding: "11px 24px", background: "#111827", color: "#fff", borderRadius: 12, fontSize: 14, fontWeight: 600, textDecoration: "none" }}>
+        View Pending Requests
+      </a>
     </div>
   );
 }
@@ -238,10 +245,12 @@ function NoRide() {
 }
 
 export default function ActiveRidePage() {
-  const [name,     setName]     = useState("Vendor");
-  const [ride,     setRide]     = useState<Booking | null>(null);
-  const [loading,  setLoading]  = useState(true);
-  const [finished, setFinished] = useState<Finished | null>(null);
+  const [name,      setName]      = useState("Vendor");
+  const [ride,      setRide]      = useState<Booking | null>(null);
+  const [loading,   setLoading]   = useState(true);
+  const [completed, setCompleted] = useState(false);
+  const [cancelled, setCancelled] = useState(false);
+  const [summary,   setSummary]   = useState<{ durationSecs: number; fare: number } | null>(null);
 
   const rideRef = useRef<Booking | null>(null);
   useEffect(() => { rideRef.current = ride; }, [ride]);
@@ -253,16 +262,26 @@ export default function ActiveRidePage() {
     if (saved) setName(saved);
   }, []);
 
-  const finishRide = useCallback((type: FinishType) => {
+  const markCompleted = useCallback(() => {
     const r = rideRef.current;
     if (r) {
       finishedIdRef.current = r._id;
       const start = new Date(r.createdAt).getTime();
       const durationSecs = Math.max(0, Math.floor((Date.now() - start) / 1000));
-      setFinished({ type, durationSecs, fare: type === "completed" ? r.price : 0 });
+      setSummary({ durationSecs, fare: r.price });
     } else {
-      setFinished({ type, durationSecs: 0, fare: 0 });
+      setSummary({ durationSecs: 0, fare: 0 });
     }
+    setCancelled(false);
+    setCompleted(true);
+    setRide(null);
+  }, []);
+
+  const markCancelled = useCallback(() => {
+    const r = rideRef.current;
+    if (r) finishedIdRef.current = r._id;
+    setCompleted(false);
+    setCancelled(true);
     setRide(null);
   }, []);
 
@@ -274,14 +293,14 @@ export default function ActiveRidePage() {
         if (data.data._id === finishedIdRef.current) {
           setRide(null);
         } else if (data.data.status === "completed") {
-          finishRide("completed");
+          markCompleted();
         } else if (data.data.status === "cancelled") {
-          finishRide("cancelled");
+          markCancelled();
         } else {
           setRide(data.data);
         }
       } else {
-        if (rideRef.current) finishRide("completed");
+        if (rideRef.current) markCompleted();
         else setRide(null);
       }
     } catch {
@@ -289,21 +308,21 @@ export default function ActiveRidePage() {
     } finally {
       setLoading(false);
     }
-  }, [finishRide]);
+  }, [markCompleted, markCancelled]);
 
   const checkRideStatus = useCallback(async (id: string) => {
     try {
       const res  = await fetch(`${API}/booking/${id}/status`);
       const data = await res.json();
       if (data.success && data.status === "completed") {
-        finishRide("completed");
+        markCompleted();
       } else if (data.success && data.status === "cancelled") {
-        finishRide("cancelled");
+        markCancelled();
       }
     } catch {
       // silent fail
     }
-  }, [finishRide]);
+  }, [markCompleted, markCancelled]);
 
   useEffect(() => {
     fetchActiveRide();
@@ -318,13 +337,17 @@ export default function ActiveRidePage() {
   }, [ride, checkRideStatus]);
 
   useEffect(() => {
-    if (!finished) return;
-    const t = setTimeout(() => setFinished(null), 5000);
+    if (!completed && !cancelled) return;
+    const t = setTimeout(() => { setCompleted(false); setCancelled(false); setSummary(null); }, 5000);
     return () => clearTimeout(t);
-  }, [finished]);
+  }, [completed, cancelled]);
 
   const handleEndRide = () => {
-    finishRide("completed");
+    markCompleted();
+  };
+
+  const handleCancelRide = () => {
+    markCancelled();
   };
 
   if (loading) return (
@@ -344,16 +367,17 @@ export default function ActiveRidePage() {
             <p style={{ fontSize: 14, color: "#6b7280" }}>Your current trip details</p>
           </div>
           {ride && <StatusBadge status={ride.status} />}
-          {finished && <StatusBadge status={finished.type} />}
+          {completed && <StatusBadge status="completed" />}
+          {cancelled && <StatusBadge status="cancelled" />}
         </div>
 
-        {finished
-          ? finished.type === "completed"
-            ? <RideCompleted durationSecs={finished.durationSecs} fare={finished.fare} />
-            : <RideCancelled durationSecs={finished.durationSecs} />
-          : ride
-            ? <ActiveRideCard ride={ride} onEndRide={handleEndRide} />
-            : <NoRide />
+        {completed && summary
+          ? <RideCompleted durationSecs={summary.durationSecs} fare={summary.fare} />
+          : cancelled
+            ? <RideCancelled />
+            : ride
+              ? <ActiveRideCard ride={ride} onEndRide={handleEndRide} onCancelRide={handleCancelRide} />
+              : <NoRide />
         }
       </div>
     </div>
