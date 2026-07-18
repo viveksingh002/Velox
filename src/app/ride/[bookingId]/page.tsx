@@ -22,7 +22,7 @@ export default function RideTrackingPage() {
   const mapInstance = useRef<any>(null)
 
   const [eta,       setEta]       = useState(180)
-  const [status,    setStatus]    = useState<'on_way' | 'arrived' | 'in_progress' | 'completed'>('on_way')
+  const [status,    setStatus]    = useState<'on_way' | 'arrived' | 'in_progress' | 'completed' | 'cancelled'>('on_way')
   const [otp,       setOtp]       = useState('')
   const [otpCopied, setOtpCopied] = useState(false)
 
@@ -35,6 +35,7 @@ export default function RideTrackingPage() {
       if (s === 'arrived')     setStatus('arrived')
       if (s === 'in_progress') setStatus('in_progress')
       if (s === 'completed')   setStatus('completed')
+      if (s === 'cancelled')   setStatus('cancelled')
       if (typeof data.otp === 'string' && data.otp.length > 0) setOtp(data.otp)
     } catch {}
   }, [bookingId])
@@ -46,6 +47,7 @@ export default function RideTrackingPage() {
   }, [pollStatus])
 
   useEffect(() => {
+    if (status === 'completed' || status === 'cancelled') return
     if (mapInstance.current) return
     const link  = document.createElement('link')
     link.rel    = 'stylesheet'
@@ -55,7 +57,7 @@ export default function RideTrackingPage() {
     script.src    = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'
     script.onload = () => initMap()
     document.head.appendChild(script)
-  }, [])
+  }, [status])
 
   const initMap = () => {
     if (!mapRef.current || mapInstance.current) return
@@ -133,8 +135,71 @@ export default function RideTrackingPage() {
     arrived:     { label: 'Driver Has Arrived', dot: '#f59e0b' },
     in_progress: { label: 'Ride in Progress',   dot: '#3b82f6' },
     completed:   { label: 'Ride Completed',     dot: '#9ca3af' },
+    cancelled:   { label: 'Ride Cancelled',     dot: '#ef4444' },
   }
   const sc = statusConfig[status]
+
+  const rebookUrl = `/?pickup=${encodeURIComponent(pickup)}&drop=${encodeURIComponent(drop)}`
+
+  // Cancelled: full replacement screen, no map, no driver info
+  if (status === 'cancelled') {
+    return (
+      <>
+        <style>{`
+          * { box-sizing: border-box; margin: 0; padding: 0; }
+          body { font-family: 'Inter', sans-serif; }
+          *::-webkit-scrollbar { display: none; }
+          * { scrollbar-width: none; -ms-overflow-style: none; }
+          @keyframes popIn { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+        `}</style>
+        <div style={{ minHeight: '100svh', width: '100vw', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f9fafb', fontFamily: 'Inter, sans-serif', padding: 20 }}>
+          <div style={{ width: '100%', maxWidth: 400, background: '#fff', borderRadius: 20, border: '1px solid #f0f0f0', padding: '40px 32px', textAlign: 'center', boxShadow: '0 8px 30px rgba(0,0,0,0.06)', animation: 'popIn 0.3s ease' }}>
+            <div style={{ width: 72, height: 72, borderRadius: '50%', background: '#fee2e2', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#dc2626" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10"/><path d="M15 9l-6 6M9 9l6 6"/>
+              </svg>
+            </div>
+            <h2 style={{ fontSize: 20, fontWeight: 800, color: '#111', marginBottom: 8 }}>Your Ride was Cancelled</h2>
+            <p style={{ fontSize: 13.5, color: '#6b7280', lineHeight: 1.6, marginBottom: 24 }}>
+              The partner has cancelled this ride. Sorry for the inconvenience — you can request another ride right away.
+            </p>
+
+            <div style={{ background: '#f9fafb', border: '1px solid #f3f4f6', borderRadius: 12, padding: '14px 16px', textAlign: 'left', marginBottom: 24 }}>
+              <div style={{ display: 'flex', gap: 10, marginBottom: 10 }}>
+                <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#111', marginTop: 4, flexShrink: 0 }} />
+                <div>
+                  <div style={{ fontSize: 9, color: '#9ca3af', fontWeight: 700, letterSpacing: 1 }}>PICKUP</div>
+                  <div style={{ fontSize: 12.5, color: '#374151', fontWeight: 500 }}>{pickup}</div>
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: 10 }}>
+                <span style={{ width: 8, height: 8, borderRadius: 2, background: '#ef4444', marginTop: 4, flexShrink: 0 }} />
+                <div>
+                  <div style={{ fontSize: 9, color: '#9ca3af', fontWeight: 700, letterSpacing: 1 }}>DROP</div>
+                  <div style={{ fontSize: 12.5, color: '#374151', fontWeight: 500 }}>{drop}</div>
+                </div>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <button
+                onClick={() => router.push(rebookUrl)}
+                style={{ width: '100%', padding: 14, borderRadius: 12, border: 'none', background: '#111', color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}
+              >
+                Request Again
+              </button>
+              <button
+                onClick={() => router.push('/')}
+                style={{ width: '100%', padding: 14, borderRadius: 12, border: '1.5px solid #e5e7eb', background: '#fff', color: '#374151', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}
+              >
+                Book Another Ride
+              </button>
+            </div>
+          </div>
+        </div>
+      </>
+    )
+  }
 
   const S = {
     page:    { display: 'flex', height: '100svh', width: '100vw', overflow: 'hidden', fontFamily: 'Inter, sans-serif' } as React.CSSProperties,
