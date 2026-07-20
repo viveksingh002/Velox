@@ -17,24 +17,64 @@ type Request = {
   expiresIn: number;
 };
 
+const NAV_LINKS = [
+  { label: "Active Ride", href: "/partner/active-ride" },
+  { label: "Pending Requests", href: "/partner/pending-requests" },
+  { label: "My Bookings", href: "/partner/bookings" },
+];
+
+const ICON_PROPS = { fill: "none", stroke: "currentColor", strokeWidth: 2, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
+
+const VEHICLE_ICONS: Record<string, JSX.Element> = {
+  bike: (
+    <svg width="14" height="14" viewBox="0 0 24 24" {...ICON_PROPS}>
+      <circle cx="5.5" cy="17.5" r="3.5" />
+      <circle cx="18.5" cy="17.5" r="3.5" />
+      <path d="M9 6l1.5 5.5L5.5 17" />
+      <path d="M9 6h6" />
+      <path d="M15 6l3 4.5" />
+      <path d="M12 11.5L18.5 17" />
+    </svg>
+  ),
+  auto: (
+    <svg width="14" height="14" viewBox="0 0 24 24" {...ICON_PROPS}>
+      <path d="M3 17h1m16 0h1M4 9l2-5h12l2 5" />
+      <rect x="2" y="9" width="20" height="8" rx="2" />
+      <circle cx="7" cy="17" r="2" />
+      <circle cx="17" cy="17" r="2" />
+    </svg>
+  ),
+  car: (
+    <svg width="14" height="14" viewBox="0 0 24 24" {...ICON_PROPS}>
+      <path d="M5 17H3a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h1l3-4h10l3 4h1a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2h-2" />
+      <circle cx="7" cy="17" r="2" />
+      <circle cx="17" cy="17" r="2" />
+    </svg>
+  ),
+};
+
+function useCountdown(initial: number) {
+  const [secs, setSecs] = useState(initial);
+  useEffect(() => {
+    if (secs <= 0) return;
+    const t = setTimeout(() => setSecs((s) => s - 1), 1000);
+    return () => clearTimeout(t);
+  }, [secs]);
+  return secs;
+}
+
 function PartnerNav({ name }: { name: string }) {
   const initials = name.split(" ").map((w) => w[0]).join("").toUpperCase().slice(0, 2) || "V";
   return (
     <div className="sticky top-0 z-40 h-[64px] px-8 flex items-center justify-between bg-zinc-950/90 backdrop-blur-md border-b border-white/5">
       <span className="text-lg font-extrabold italic tracking-tight text-white">Vëlox</span>
       <div className="flex gap-8">
-        {[
-          { label: "Active Ride", href: "/partner/active-ride" },
-          { label: "Pending Requests", href: "/partner/pending-requests" },
-          { label: "My Bookings", href: "/partner/bookings" },
-        ].map((l) => (
+        {NAV_LINKS.map((l) => (
           <a
             key={l.label}
             href={l.href}
             className={`text-[13.5px] transition-colors ${
-              l.label === "Pending Requests"
-                ? "text-amber-400 font-semibold"
-                : "text-white/40 font-medium hover:text-white/70"
+              l.label === "Pending Requests" ? "text-amber-400 font-semibold" : "text-white/40 font-medium hover:text-white/70"
             }`}
           >
             {l.label}
@@ -47,34 +87,6 @@ function PartnerNav({ name }: { name: string }) {
     </div>
   );
 }
-
-function useCountdown(initial: number) {
-  const [secs, setSecs] = useState(initial);
-  useEffect(() => {
-    if (secs <= 0) return;
-    const t = setTimeout(() => setSecs((s) => s - 1), 1000);
-    return () => clearTimeout(t);
-  }, [secs]);
-  return secs;
-}
-
-const vehicleIcons: Record<string, JSX.Element> = {
-  bike: (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="5.5" cy="17.5" r="3.5" /><circle cx="18.5" cy="17.5" r="3.5" /><path d="M9 6l1.5 5.5L5.5 17" /><path d="M9 6h6" /><path d="M15 6l3 4.5" /><path d="M12 11.5L18.5 17" />
-    </svg>
-  ),
-  auto: (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M3 17h1m16 0h1M4 9l2-5h12l2 5" /><rect x="2" y="9" width="20" height="8" rx="2" /><circle cx="7" cy="17" r="2" /><circle cx="17" cy="17" r="2" />
-    </svg>
-  ),
-  car: (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M5 17H3a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h1l3-4h10l3 4h1a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2h-2" /><circle cx="7" cy="17" r="2" /><circle cx="17" cy="17" r="2" />
-    </svg>
-  ),
-};
 
 function RequestCard({ req, onAccept, onDecline }: { req: Request; onAccept: (id: string) => void; onDecline: (id: string) => void }) {
   const secs = useCountdown(req.expiresIn);
@@ -99,17 +111,20 @@ function RequestCard({ req, onAccept, onDecline }: { req: Request; onAccept: (id
     }
   };
 
+  const chips = [
+    { label: req.distance, icon: <svg width="11" height="11" viewBox="0 0 24 24" {...ICON_PROPS} strokeWidth={2.5}><path d="M3 12h18M3 6h18M3 18h18" /></svg> },
+    { label: `${req.eta} away`, icon: <svg width="11" height="11" viewBox="0 0 24 24" {...ICON_PROPS} strokeWidth={2.5}><circle cx="12" cy="12" r="10" /><path d="M12 6v6l3 3" /></svg> },
+    { label: req.vehicleNeeded, icon: VEHICLE_ICONS[req.vehicleNeeded] || null },
+  ];
+
   return (
     <div
-      className={`relative rounded-2xl border overflow-hidden mb-4 transition-all duration-300 ${
+      className={`relative rounded-2xl border overflow-hidden mb-4 bg-zinc-900/60 backdrop-blur-sm transition-all duration-300 ${
         expired ? "opacity-40 border-white/5" : "border-white/10"
-      } bg-zinc-900/60 backdrop-blur-sm ${urgent && !expired ? "shadow-[0_0_0_1px_rgba(239,68,68,0.4),0_0_24px_rgba(239,68,68,0.15)]" : ""}`}
+      } ${urgent && !expired ? "shadow-[0_0_0_1px_rgba(239,68,68,0.4),0_0_24px_rgba(239,68,68,0.15)]" : ""}`}
     >
       <div className="h-[3px] bg-white/5">
-        <div
-          className="h-full transition-[width] duration-1000 ease-linear"
-          style={{ width: `${pct}%`, background: urgentColor }}
-        />
+        <div className="h-full transition-[width] duration-1000 ease-linear" style={{ width: `${pct}%`, background: urgentColor }} />
       </div>
 
       <div className="p-5">
@@ -131,7 +146,8 @@ function RequestCard({ req, onAccept, onDecline }: { req: Request; onAccept: (id
             <p className="text-[22px] font-extrabold text-amber-400 mb-0.5">{req.fare}</p>
             <div className="flex items-center gap-1 justify-end">
               <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke={urgentColor} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" />
+                <circle cx="12" cy="12" r="10" />
+                <path d="M12 6v6l4 2" />
               </svg>
               <span className="text-xs font-bold" style={{ color: urgentColor }}>
                 {expired ? "Expired" : `${secs}s left`}
@@ -153,22 +169,15 @@ function RequestCard({ req, onAccept, onDecline }: { req: Request; onAccept: (id
         </div>
 
         <div className="flex gap-2 mb-4 flex-wrap">
-          {[
-            { label: req.distance, icon: <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12h18M3 6h18M3 18h18" /></svg> },
-            { label: req.eta + " away", icon: <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><path d="M12 6v6l3 3" /></svg> },
-            { label: req.vehicleNeeded, icon: vehicleIcons[req.vehicleNeeded] || null },
-          ].map((chip) => (
-            <span
-              key={chip.label}
-              className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1 rounded-full bg-white/5 text-zinc-300 border border-white/5"
-            >
+          {chips.map((chip) => (
+            <span key={chip.label} className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1 rounded-full bg-white/5 text-zinc-300 border border-white/5">
               {chip.icon}
               {chip.label}
             </span>
           ))}
         </div>
 
-        {!expired && (
+        {!expired ? (
           <div className="grid grid-cols-[1fr_2fr] gap-2.5">
             <button
               onClick={() => onDecline(req.id)}
@@ -195,8 +204,7 @@ function RequestCard({ req, onAccept, onDecline }: { req: Request; onAccept: (id
               )}
             </button>
           </div>
-        )}
-        {expired && (
+        ) : (
           <div className="py-2.5 bg-white/5 rounded-xl text-center">
             <p className="text-[13px] text-zinc-500 font-medium">Request expired</p>
           </div>
@@ -209,8 +217,8 @@ function RequestCard({ req, onAccept, onDecline }: { req: Request; onAccept: (id
 function Toast({ msg, type }: { msg: string; type: "accept" | "decline" }) {
   return (
     <div
-      className={`fixed bottom-8 left-1/2 -translate-x-1/2 px-6 py-3 rounded-xl text-white text-sm font-semibold z-[1000] shadow-2xl whitespace-nowrap ${
-        type === "accept" ? "bg-amber-400 text-black" : "bg-red-600"
+      className={`fixed bottom-8 left-1/2 -translate-x-1/2 px-6 py-3 rounded-xl text-sm font-semibold z-[1000] shadow-2xl whitespace-nowrap ${
+        type === "accept" ? "bg-amber-400 text-black" : "bg-red-600 text-white"
       }`}
     >
       {msg}
@@ -223,7 +231,8 @@ function EmptyState() {
     <div className="bg-zinc-900/60 backdrop-blur-sm rounded-2xl border border-white/10 py-16 px-8 text-center">
       <div className="w-[72px] h-[72px] rounded-full bg-white/5 flex items-center justify-center mx-auto mb-5">
         <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#71717a" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><path d="M22 4L12 14.01l-3-3" />
+          <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+          <path d="M22 4L12 14.01l-3-3" />
         </svg>
       </div>
       <h3 className="text-lg font-bold text-zinc-100 mb-2">All caught up!</h3>
@@ -315,7 +324,8 @@ export default function PendingRequestsPage() {
         {requests.length > 0 && (
           <div className="flex items-center gap-2.5 px-4 py-3 bg-amber-400/10 rounded-xl mb-5 border border-amber-400/20">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="12" r="10" /><path d="M12 8v4M12 16h.01" />
+              <circle cx="12" cy="12" r="10" />
+              <path d="M12 8v4M12 16h.01" />
             </svg>
             <p className="text-[13px] text-amber-400 font-medium">Each request expires automatically. Accept quickly!</p>
           </div>
