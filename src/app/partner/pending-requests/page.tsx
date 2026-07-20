@@ -20,14 +20,30 @@ type Request = {
 function PartnerNav({ name }: { name: string }) {
   const initials = name.split(" ").map((w) => w[0]).join("").toUpperCase().slice(0, 2) || "V";
   return (
-    <div style={{ background:"#111827",padding:"0 32px",display:"flex",alignItems:"center",justifyContent:"space-between",height:60,marginBottom:32 }}>
-      <span style={{ fontSize:18,fontWeight:800,color:"#fff",letterSpacing:"-0.5px",fontStyle:"italic" }}>Vëlox</span>
-      <div style={{ display:"flex",gap:32 }}>
-        {[{ label:"Active Ride",href:"/partner/active-ride" },{ label:"Pending Requests",href:"/partner/pending-requests" },{ label:"My Bookings",href:"/partner/bookings" }].map((l) => (
-          <a key={l.label} href={l.href} style={{ fontSize:13.5,color:l.label==="Pending Requests"?"#fff":"rgba(255,255,255,0.55)",textDecoration:"none",fontWeight:l.label==="Pending Requests"?700:500 }}>{l.label}</a>
+    <div className="sticky top-0 z-40 h-[64px] px-8 flex items-center justify-between bg-zinc-950/90 backdrop-blur-md border-b border-white/5">
+      <span className="text-lg font-extrabold italic tracking-tight text-white">Vëlox</span>
+      <div className="flex gap-8">
+        {[
+          { label: "Active Ride", href: "/partner/active-ride" },
+          { label: "Pending Requests", href: "/partner/pending-requests" },
+          { label: "My Bookings", href: "/partner/bookings" },
+        ].map((l) => (
+          <a
+            key={l.label}
+            href={l.href}
+            className={`text-[13.5px] transition-colors ${
+              l.label === "Pending Requests"
+                ? "text-amber-400 font-semibold"
+                : "text-white/40 font-medium hover:text-white/70"
+            }`}
+          >
+            {l.label}
+          </a>
         ))}
       </div>
-      <div style={{ width:36,height:36,borderRadius:"50%",background:"linear-gradient(135deg,#2563eb,#60a5fa)",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontSize:13,fontWeight:700 }}>{initials}</div>
+      <div className="w-9 h-9 rounded-full bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center text-black text-[13px] font-bold">
+        {initials}
+      </div>
     </div>
   );
 }
@@ -43,15 +59,29 @@ function useCountdown(initial: number) {
 }
 
 const vehicleIcons: Record<string, JSX.Element> = {
-  bike: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="5.5" cy="17.5" r="3.5"/><circle cx="18.5" cy="17.5" r="3.5"/><path d="M9 6l1.5 5.5L5.5 17"/><path d="M9 6h6"/><path d="M15 6l3 4.5"/><path d="M12 11.5L18.5 17"/></svg>,
-  auto: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 17h1m16 0h1M4 9l2-5h12l2 5"/><rect x="2" y="9" width="20" height="8" rx="2"/><circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/></svg>,
-  car:  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 17H3a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h1l3-4h10l3 4h1a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2h-2"/><circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/></svg>,
+  bike: (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="5.5" cy="17.5" r="3.5" /><circle cx="18.5" cy="17.5" r="3.5" /><path d="M9 6l1.5 5.5L5.5 17" /><path d="M9 6h6" /><path d="M15 6l3 4.5" /><path d="M12 11.5L18.5 17" />
+    </svg>
+  ),
+  auto: (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 17h1m16 0h1M4 9l2-5h12l2 5" /><rect x="2" y="9" width="20" height="8" rx="2" /><circle cx="7" cy="17" r="2" /><circle cx="17" cy="17" r="2" />
+    </svg>
+  ),
+  car: (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M5 17H3a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h1l3-4h10l3 4h1a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2h-2" /><circle cx="7" cy="17" r="2" /><circle cx="17" cy="17" r="2" />
+    </svg>
+  ),
 };
 
 function RequestCard({ req, onAccept, onDecline }: { req: Request; onAccept: (id: string) => void; onDecline: (id: string) => void }) {
   const secs = useCountdown(req.expiresIn);
   const expired = secs <= 0;
-  const urgentColor = secs <= 10 ? "#ef4444" : secs <= 20 ? "#f59e0b" : "#22c55e";
+  const urgent = secs <= 10;
+  const warn = secs <= 20 && secs > 10;
+  const urgentColor = urgent ? "#ef4444" : warn ? "#f59e0b" : "#34d399";
   const pct = (secs / req.expiresIn) * 100;
   const [accepting, setAccepting] = useState(false);
 
@@ -70,69 +100,105 @@ function RequestCard({ req, onAccept, onDecline }: { req: Request; onAccept: (id
   };
 
   return (
-    <div style={{ background:"#fff",borderRadius:16,border:`1.5px solid ${expired?"#f3f4f6":"#e5e7eb"}`,overflow:"hidden",marginBottom:12,opacity:expired?0.5:1,transition:"opacity 0.3s" }}>
-      <div style={{ height:4,background:"#f3f4f6" }}>
-        <div style={{ height:"100%",width:`${pct}%`,background:urgentColor,transition:"width 1s linear, background 0.3s" }} />
+    <div
+      className={`relative rounded-2xl border overflow-hidden mb-4 transition-all duration-300 ${
+        expired ? "opacity-40 border-white/5" : "border-white/10"
+      } bg-zinc-900/60 backdrop-blur-sm ${urgent && !expired ? "shadow-[0_0_0_1px_rgba(239,68,68,0.4),0_0_24px_rgba(239,68,68,0.15)]" : ""}`}
+    >
+      <div className="h-[3px] bg-white/5">
+        <div
+          className="h-full transition-[width] duration-1000 ease-linear"
+          style={{ width: `${pct}%`, background: urgentColor }}
+        />
       </div>
-      <div style={{ padding:"18px 20px" }}>
-        <div style={{ display:"flex",alignItems:"flex-start",justifyContent:"space-between",marginBottom:14 }}>
-          <div style={{ display:"flex",gap:12,alignItems:"center" }}>
-            <div style={{ width:44,height:44,borderRadius:"50%",background:"linear-gradient(135deg,#6366f1,#a5b4fc)",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontSize:14,fontWeight:700,flexShrink:0 }}>
+
+      <div className="p-5">
+        <div className="flex items-start justify-between mb-4">
+          <div className="flex gap-3 items-center">
+            <div className="w-11 h-11 rounded-full bg-gradient-to-br from-indigo-500 to-indigo-300 flex items-center justify-center text-white text-sm font-bold flex-shrink-0">
               {req.customer.split(" ").map((w) => w[0]).join("").slice(0, 2)}
             </div>
             <div>
-              <p style={{ fontSize:15,fontWeight:700,color:"#111827",marginBottom:3 }}>{req.customer}</p>
-              <div style={{ display:"flex",alignItems:"center",gap:6 }}>
-                <span style={{ fontSize:12,color:"#6b7280" }}>⭐ {req.rating}</span>
-                <span style={{ fontSize:12,color:"#d1d5db" }}>·</span>
-                <span style={{ fontSize:12,color:"#6b7280" }}>{req.trips} trips</span>
+              <p className="text-[15px] font-bold text-zinc-100 mb-0.5">{req.customer}</p>
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs text-zinc-500">⭐ {req.rating}</span>
+                <span className="text-xs text-zinc-700">·</span>
+                <span className="text-xs text-zinc-500">{req.trips} trips</span>
               </div>
             </div>
           </div>
-          <div style={{ textAlign:"right" }}>
-            <p style={{ fontSize:22,fontWeight:800,color:"#111827",marginBottom:2 }}>{req.fare}</p>
-            <div style={{ display:"flex",alignItems:"center",gap:4,justifyContent:"flex-end" }}>
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke={urgentColor} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
-              <span style={{ fontSize:12,fontWeight:700,color:urgentColor }}>{expired?"Expired":`${secs}s left`}</span>
+          <div className="text-right">
+            <p className="text-[22px] font-extrabold text-amber-400 mb-0.5">{req.fare}</p>
+            <div className="flex items-center gap-1 justify-end">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke={urgentColor} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" />
+              </svg>
+              <span className="text-xs font-bold" style={{ color: urgentColor }}>
+                {expired ? "Expired" : `${secs}s left`}
+              </span>
             </div>
           </div>
         </div>
 
-        <div style={{ display:"flex",gap:12,alignItems:"flex-start",marginBottom:14 }}>
-          <div style={{ display:"flex",flexDirection:"column",alignItems:"center",paddingTop:3 }}>
-            <div style={{ width:8,height:8,borderRadius:"50%",background:"#22c55e" }} />
-            <div style={{ width:1.5,height:26,background:"#e5e7eb" }} />
-            <div style={{ width:8,height:8,borderRadius:2,background:"#ef4444" }} />
+        <div className="flex gap-3 items-start mb-4">
+          <div className="flex flex-col items-center pt-1">
+            <div className="w-2 h-2 rounded-full bg-emerald-400" />
+            <div className="w-[1.5px] h-[26px] bg-white/10" />
+            <div className="w-2 h-2 rounded-sm bg-red-500" />
           </div>
-          <div style={{ flex:1 }}>
-            <p style={{ fontSize:13,color:"#374151",fontWeight:500,marginBottom:14 }}>{req.pickup}</p>
-            <p style={{ fontSize:13,color:"#374151",fontWeight:500 }}>{req.drop}</p>
+          <div className="flex-1">
+            <p className="text-[13px] text-zinc-300 font-medium mb-3.5">{req.pickup}</p>
+            <p className="text-[13px] text-zinc-300 font-medium">{req.drop}</p>
           </div>
         </div>
 
-        <div style={{ display:"flex",gap:8,marginBottom:16 }}>
+        <div className="flex gap-2 mb-4 flex-wrap">
           {[
-            { label:req.distance, icon:<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12h18M3 6h18M3 18h18"/></svg> },
-            { label:req.eta+" away", icon:<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l3 3"/></svg> },
-            { label:req.vehicleNeeded, icon:vehicleIcons[req.vehicleNeeded]||null },
+            { label: req.distance, icon: <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12h18M3 6h18M3 18h18" /></svg> },
+            { label: req.eta + " away", icon: <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><path d="M12 6v6l3 3" /></svg> },
+            { label: req.vehicleNeeded, icon: vehicleIcons[req.vehicleNeeded] || null },
           ].map((chip) => (
-            <span key={chip.label} style={{ display:"inline-flex",alignItems:"center",gap:5,fontSize:12,fontWeight:500,padding:"4px 11px",borderRadius:99,background:"#f3f4f6",color:"#374151" }}>
-              {chip.icon}{chip.label}
+            <span
+              key={chip.label}
+              className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1 rounded-full bg-white/5 text-zinc-300 border border-white/5"
+            >
+              {chip.icon}
+              {chip.label}
             </span>
           ))}
         </div>
 
         {!expired && (
-          <div style={{ display:"grid",gridTemplateColumns:"1fr 2fr",gap:10 }}>
-            <button onClick={() => onDecline(req.id)} style={{ padding:"12px",borderRadius:12,border:"1.5px solid #e5e7eb",background:"#fff",color:"#6b7280",fontSize:14,fontWeight:600,cursor:"pointer" }}>Decline</button>
-            <button onClick={handleAccept} disabled={accepting} style={{ padding:"12px",borderRadius:12,border:"none",background:accepting?"#6b7280":"#111827",color:"#fff",fontSize:14,fontWeight:600,cursor:accepting?"not-allowed":"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8 }}>
-              {accepting ? "Accepting..." : <>Accept Ride <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg></>}
+          <div className="grid grid-cols-[1fr_2fr] gap-2.5">
+            <button
+              onClick={() => onDecline(req.id)}
+              className="py-3 rounded-xl border border-white/10 bg-transparent text-zinc-400 text-sm font-semibold hover:bg-white/5 transition-colors"
+            >
+              Decline
+            </button>
+            <button
+              onClick={handleAccept}
+              disabled={accepting}
+              className={`py-3 rounded-xl border-none text-sm font-semibold flex items-center justify-center gap-2 transition-colors ${
+                accepting ? "bg-zinc-700 text-zinc-300 cursor-not-allowed" : "bg-amber-400 text-black hover:bg-amber-300 cursor-pointer"
+              }`}
+            >
+              {accepting ? (
+                "Accepting..."
+              ) : (
+                <>
+                  Accept Ride
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M5 12h14M12 5l7 7-7 7" />
+                  </svg>
+                </>
+              )}
             </button>
           </div>
         )}
         {expired && (
-          <div style={{ padding:"10px",background:"#f9fafb",borderRadius:12,textAlign:"center" }}>
-            <p style={{ fontSize:13,color:"#9ca3af",fontWeight:500 }}>Request expired</p>
+          <div className="py-2.5 bg-white/5 rounded-xl text-center">
+            <p className="text-[13px] text-zinc-500 font-medium">Request expired</p>
           </div>
         )}
       </div>
@@ -142,7 +208,11 @@ function RequestCard({ req, onAccept, onDecline }: { req: Request; onAccept: (id
 
 function Toast({ msg, type }: { msg: string; type: "accept" | "decline" }) {
   return (
-    <div style={{ position:"fixed",bottom:32,left:"50%",transform:"translateX(-50%)",padding:"12px 24px",borderRadius:12,background:type==="accept"?"#111827":"#dc2626",color:"#fff",fontSize:14,fontWeight:600,zIndex:1000,boxShadow:"0 8px 32px rgba(0,0,0,0.25)",whiteSpace:"nowrap" }}>
+    <div
+      className={`fixed bottom-8 left-1/2 -translate-x-1/2 px-6 py-3 rounded-xl text-white text-sm font-semibold z-[1000] shadow-2xl whitespace-nowrap ${
+        type === "accept" ? "bg-amber-400 text-black" : "bg-red-600"
+      }`}
+    >
       {msg}
     </div>
   );
@@ -150,20 +220,26 @@ function Toast({ msg, type }: { msg: string; type: "accept" | "decline" }) {
 
 function EmptyState() {
   return (
-    <div style={{ background:"#fff",borderRadius:16,border:"1px solid #e5e7eb",padding:"64px 32px",textAlign:"center" }}>
-      <div style={{ width:72,height:72,borderRadius:"50%",background:"#f3f4f6",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 20px" }}>
-        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="M22 4L12 14.01l-3-3"/></svg>
+    <div className="bg-zinc-900/60 backdrop-blur-sm rounded-2xl border border-white/10 py-16 px-8 text-center">
+      <div className="w-[72px] h-[72px] rounded-full bg-white/5 flex items-center justify-center mx-auto mb-5">
+        <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#71717a" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><path d="M22 4L12 14.01l-3-3" />
+        </svg>
       </div>
-      <h3 style={{ fontSize:18,fontWeight:700,color:"#111827",marginBottom:8 }}>All caught up!</h3>
-      <p style={{ fontSize:14,color:"#9ca3af",lineHeight:1.6 }}>No pending ride requests right now.<br/>New requests will show up here automatically.</p>
+      <h3 className="text-lg font-bold text-zinc-100 mb-2">All caught up!</h3>
+      <p className="text-sm text-zinc-500 leading-relaxed">
+        No pending ride requests right now.
+        <br />
+        New requests will show up here automatically.
+      </p>
     </div>
   );
 }
 
 export default function PendingRequestsPage() {
-  const [name, setName]     = useState("Vendor");
+  const [name, setName] = useState("Vendor");
   const [requests, setRequests] = useState<Request[]>([]);
-  const [toast, setToast]   = useState<{ msg: string; type: "accept" | "decline" } | null>(null);
+  const [toast, setToast] = useState<{ msg: string; type: "accept" | "decline" } | null>(null);
 
   useEffect(() => {
     const saved = localStorage.getItem("velox_vendor_name");
@@ -172,25 +248,27 @@ export default function PendingRequestsPage() {
 
   const fetchBookings = useCallback(async () => {
     try {
-      const res  = await fetch(`${API}/booking`);
+      const res = await fetch(`${API}/booking`);
       const data = await res.json();
       const fresh = (Array.isArray(data) ? data : []).filter((b: any) => {
         const age = (Date.now() - new Date(b.createdAt).getTime()) / 1000;
         return age < 60 && (!b.status || b.status === "pending");
       });
-      setRequests(fresh.map((b: any) => ({
-        id:            b._id,
-        customer:      "Customer",
-        rating:        4.5,
-        trips:         0,
-        pickup:        b.pickup,
-        drop:          b.drop,
-        distance:      "—",
-        fare:          `₹${b.price}`,
-        eta:           "—",
-        vehicleNeeded: b.vehicle,
-        expiresIn:     Math.max(60 - Math.floor((Date.now() - new Date(b.createdAt).getTime()) / 1000), 0),
-      })));
+      setRequests(
+        fresh.map((b: any) => ({
+          id: b._id,
+          customer: "Customer",
+          rating: 4.5,
+          trips: 0,
+          pickup: b.pickup,
+          drop: b.drop,
+          distance: "—",
+          fare: `₹${b.price}`,
+          eta: "—",
+          vehicleNeeded: b.vehicle,
+          expiresIn: Math.max(60 - Math.floor((Date.now() - new Date(b.createdAt).getTime()) / 1000), 0),
+        }))
+      );
     } catch {}
   }, []);
 
@@ -206,41 +284,48 @@ export default function PendingRequestsPage() {
   };
 
   const handleAccept = (id: string) => {
-  setRequests((prev) => prev.filter((r) => r.id !== id));
-  showToast("✓ Ride accepted!", "accept");
-  setTimeout(() => {
-    window.location.href = "/partner/active-ride";
-  }, 1500);
-};
+    setRequests((prev) => prev.filter((r) => r.id !== id));
+    showToast("✓ Ride accepted!", "accept");
+    setTimeout(() => {
+      window.location.href = "/partner/active-ride";
+    }, 1500);
+  };
 
   const handleDecline = (id: string) => {
     setRequests((prev) => prev.filter((r) => r.id !== id));
     showToast("Ride declined.", "decline");
   };
 
-
   return (
-    <div style={{ minHeight:"100vh",background:"#f3f4f6",fontFamily:"Inter,sans-serif" }}>
+    <div className="min-h-screen bg-zinc-950 font-[Inter,sans-serif]">
       <PartnerNav name={name} />
-      <div style={{ maxWidth:680,margin:"0 auto",padding:"0 24px 48px" }}>
-        <div style={{ marginBottom:24,display:"flex",alignItems:"center",justifyContent:"space-between" }}>
+      <div className="max-w-[680px] mx-auto px-6 pb-12 pt-8">
+        <div className="mb-6 flex items-center justify-between">
           <div>
-            <h1 style={{ fontSize:28,fontWeight:800,color:"#111827",marginBottom:4 }}>Pending Requests</h1>
-            <p style={{ fontSize:14,color:"#6b7280" }}>Accept or decline incoming ride requests</p>
+            <h1 className="text-[28px] font-extrabold text-zinc-100 mb-1">Pending Requests</h1>
+            <p className="text-sm text-zinc-500">Accept or decline incoming ride requests</p>
           </div>
           {requests.length > 0 && (
-            <div style={{ width:32,height:32,borderRadius:"50%",background:"#111827",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontSize:13,fontWeight:800 }}>{requests.length}</div>
+            <div className="w-8 h-8 rounded-full bg-amber-400 flex items-center justify-center text-black text-[13px] font-extrabold">
+              {requests.length}
+            </div>
           )}
         </div>
+
         {requests.length > 0 && (
-          <div style={{ display:"flex",alignItems:"center",gap:10,padding:"12px 16px",background:"#eff6ff",borderRadius:12,marginBottom:20,border:"1px solid #dbeafe" }}>
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
-            <p style={{ fontSize:13,color:"#1d4ed8",fontWeight:500 }}>Each request expires automatically. Accept quickly!</p>
+          <div className="flex items-center gap-2.5 px-4 py-3 bg-amber-400/10 rounded-xl mb-5 border border-amber-400/20">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="10" /><path d="M12 8v4M12 16h.01" />
+            </svg>
+            <p className="text-[13px] text-amber-400 font-medium">Each request expires automatically. Accept quickly!</p>
           </div>
         )}
-        {requests.length === 0 ? <EmptyState /> : requests.map((r) => (
-          <RequestCard key={r.id} req={r} onAccept={handleAccept} onDecline={handleDecline} />
-        ))}
+
+        {requests.length === 0 ? (
+          <EmptyState />
+        ) : (
+          requests.map((r) => <RequestCard key={r.id} req={r} onAccept={handleAccept} onDecline={handleDecline} />)
+        )}
       </div>
       {toast && <Toast msg={toast.msg} type={toast.type} />}
     </div>
