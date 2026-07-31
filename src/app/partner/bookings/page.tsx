@@ -1,28 +1,10 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import PartnerNav from "../components/PartnerNav";
 
 const API = "http://localhost:5000/api";
 const FILTER_TABS = ["All", "Completed", "Cancelled"];
-
-function PartnerNav({ name }: { name: string }) {
-  const initials = name.split(" ").map((w) => w[0]).join("").toUpperCase().slice(0, 2) || "V";
-  return (
-    <div style={{ background: "#111827", padding: "0 32px", display: "flex", alignItems: "center", justifyContent: "space-between", height: 60, marginBottom: 32 }}>
-      <span style={{ fontSize: 18, fontWeight: 800, color: "#fff", letterSpacing: "-0.5px", fontStyle: "italic" }}>Vëlox</span>
-      <div style={{ display: "flex", gap: 32 }}>
-        {[
-          { label: "Active Ride", href: "/partner/active-ride" },
-          { label: "Pending Requests", href: "/partner/pending-requests" },
-          { label: "My Bookings", href: "/partner/bookings" },
-        ].map((l) => (
-          <a key={l.label} href={l.href} style={{ fontSize: 13.5, color: l.label === "My Bookings" ? "#fff" : "rgba(255,255,255,0.55)", textDecoration: "none", fontWeight: l.label === "My Bookings" ? 700 : 500 }}>{l.label}</a>
-        ))}
-      </div>
-      <div style={{ width: 36, height: 36, borderRadius: "50%", background: "linear-gradient(135deg,#2563eb,#60a5fa)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 13, fontWeight: 700 }}>{initials}</div>
-    </div>
-  );
-}
 
 function SummaryStrip({ bookings }: { bookings: any[] }) {
   const completed = bookings.filter((b) => b.status === "completed");
@@ -31,9 +13,9 @@ function SummaryStrip({ bookings }: { bookings: any[] }) {
   return (
     <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12, marginBottom: 24 }}>
       {[
-        { label: "Total Rides",   value: bookings.length.toString() },
-        { label: "Total Earned",  value: `₹${totalEarnings}`        },
-        { label: "Completed",     value: completed.length.toString() },
+        { label: "Total Rides",  value: bookings.length.toString() },
+        { label: "Total Earned", value: `₹${totalEarnings}`        },
+        { label: "Completed",    value: completed.length.toString() },
       ].map((s) => (
         <div key={s.label} style={{ background: "#fff", borderRadius: 14, border: "1px solid #e5e7eb", padding: "16px 18px" }}>
           <p style={{ fontSize: 11, fontWeight: 700, color: "#9ca3af", letterSpacing: "1px", textTransform: "uppercase", marginBottom: 8 }}>{s.label}</p>
@@ -101,9 +83,9 @@ function BookingCard({ booking }: { booking: any }) {
             </div>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 4 }}>
               {[
-                booking.vehicle && { label: booking.vehicle },
+                booking.vehicle    && { label: booking.vehicle },
                 booking.driverName && { label: `Driver: ${booking.driverName}` },
-                isCompleted && { label: `₹${booking.price} earned` },
+                isCompleted        && { label: `₹${booking.price} earned` },
               ].filter(Boolean).map((chip: any) => (
                 <span key={chip.label} style={{ fontSize: 12, fontWeight: 500, padding: "4px 12px", borderRadius: 99, background: "#f3f4f6", color: "#374151" }}>{chip.label}</span>
               ))}
@@ -126,11 +108,11 @@ function EmptyState({ filter }: { filter: string }) {
 }
 
 export default function BookingsPage() {
-  const [name,      setName]      = useState("Vendor");
+  const [name,      setName]     = useState("Vendor");
   const [activeTab, setActiveTab] = useState("All");
-  const [search,    setSearch]    = useState("");
-  const [bookings,  setBookings]  = useState<any[]>([]);
-  const [loading,   setLoading]   = useState(true);
+  const [search,    setSearch]   = useState("");
+  const [bookings,  setBookings] = useState<any[]>([]);
+  const [loading,   setLoading]  = useState(true);
 
   useEffect(() => {
     const saved = localStorage.getItem("velox_vendor_name");
@@ -142,11 +124,9 @@ export default function BookingsPage() {
     try {
       const res  = await fetch(`${API}/booking`);
       const data = await res.json();
-      // sirf completed aur cancelled dikhao — active rides nahi
       const done = (Array.isArray(data) ? data : []).filter((b: any) =>
         b.status === "completed" || b.status === "cancelled"
       );
-      // newest first
       done.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
       setBookings(done);
     } catch (err) {
@@ -166,9 +146,9 @@ export default function BookingsPage() {
 
   return (
     <div style={{ minHeight: "100vh", background: "#f3f4f6", fontFamily: "Inter,sans-serif" }}>
-      <PartnerNav name={name} />
+      <PartnerNav name={name} active="My Bookings" />
       <div style={{ maxWidth: 760, margin: "0 auto", padding: "0 24px 48px" }}>
-        <div style={{ marginBottom: 24 }}>
+        <div style={{ marginBottom: 24, marginTop: 28 }}>
           <h1 style={{ fontSize: 28, fontWeight: 800, color: "#111827", marginBottom: 4 }}>My Bookings</h1>
           <p style={{ fontSize: 14, color: "#6b7280" }}>Your complete ride history</p>
         </div>
@@ -181,18 +161,13 @@ export default function BookingsPage() {
         ) : (
           <>
             <SummaryStrip bookings={bookings} />
-
             <div style={{ background: "#fff", borderRadius: 16, border: "1px solid #e5e7eb", padding: "16px 20px", marginBottom: 16 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14, padding: "10px 14px", background: "#f9fafb", borderRadius: 12, border: "1px solid #f3f4f6" }}>
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                   <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
                 </svg>
-                <input
-                  placeholder="Search by name or ride ID…"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  style={{ flex: 1, border: "none", outline: "none", background: "transparent", fontSize: 13.5, color: "#111827", fontFamily: "Inter,sans-serif" }}
-                />
+                <input placeholder="Search by name or ride ID…" value={search} onChange={(e) => setSearch(e.target.value)}
+                  style={{ flex: 1, border: "none", outline: "none", background: "transparent", fontSize: 13.5, color: "#111827", fontFamily: "Inter,sans-serif" }} />
               </div>
               <div style={{ display: "flex", gap: 6 }}>
                 {FILTER_TABS.map((tab) => (
@@ -202,7 +177,6 @@ export default function BookingsPage() {
                 ))}
               </div>
             </div>
-
             {filtered.length === 0
               ? <EmptyState filter={activeTab} />
               : filtered.map((b) => <BookingCard key={b._id} booking={b} />)

@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
+import PartnerNav from "../components/PartnerNav";
 
 const API = "http://localhost:5000/api";
 
@@ -16,21 +17,6 @@ type Request = {
   vehicleNeeded: string;
   expiresIn: number;
 };
-
-function PartnerNav({ name }: { name: string }) {
-  const initials = name.split(" ").map((w) => w[0]).join("").toUpperCase().slice(0, 2) || "V";
-  return (
-    <div style={{ background:"#111827",padding:"0 32px",display:"flex",alignItems:"center",justifyContent:"space-between",height:60,marginBottom:32 }}>
-      <span style={{ fontSize:18,fontWeight:800,color:"#fff",letterSpacing:"-0.5px",fontStyle:"italic" }}>Vëlox</span>
-      <div style={{ display:"flex",gap:32 }}>
-        {[{ label:"Active Ride",href:"/partner/active-ride" },{ label:"Pending Requests",href:"/partner/pending-requests" },{ label:"My Bookings",href:"/partner/bookings" }].map((l) => (
-          <a key={l.label} href={l.href} style={{ fontSize:13.5,color:l.label==="Pending Requests"?"#fff":"rgba(255,255,255,0.55)",textDecoration:"none",fontWeight:l.label==="Pending Requests"?700:500 }}>{l.label}</a>
-        ))}
-      </div>
-      <div style={{ width:36,height:36,borderRadius:"50%",background:"linear-gradient(135deg,#2563eb,#60a5fa)",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontSize:13,fontWeight:700 }}>{initials}</div>
-    </div>
-  );
-}
 
 function useCountdown(initial: number) {
   const [secs, setSecs] = useState(initial);
@@ -161,9 +147,9 @@ function EmptyState() {
 }
 
 export default function PendingRequestsPage() {
-  const [name, setName]     = useState("Vendor");
+  const [name,     setName]     = useState("Vendor");
   const [requests, setRequests] = useState<Request[]>([]);
-  const [toast, setToast]   = useState<{ msg: string; type: "accept" | "decline" } | null>(null);
+  const [toast,    setToast]    = useState<{ msg: string; type: "accept" | "decline" } | null>(null);
 
   useEffect(() => {
     const saved = localStorage.getItem("velox_vendor_name");
@@ -206,24 +192,21 @@ export default function PendingRequestsPage() {
   };
 
   const handleAccept = (id: string) => {
-  setRequests((prev) => prev.filter((r) => r.id !== id));
-  showToast("✓ Ride accepted!", "accept");
-  setTimeout(() => {
-    window.location.href = "/partner/active-ride";
-  }, 1500);
-};
+    setRequests((prev) => prev.filter((r) => r.id !== id));
+    showToast("✓ Ride accepted!", "accept");
+    setTimeout(() => { window.location.href = "/partner/active-ride"; }, 1500);
+  };
 
   const handleDecline = (id: string) => {
     setRequests((prev) => prev.filter((r) => r.id !== id));
     showToast("Ride declined.", "decline");
   };
 
-
   return (
     <div style={{ minHeight:"100vh",background:"#f3f4f6",fontFamily:"Inter,sans-serif" }}>
-      <PartnerNav name={name} />
+      <PartnerNav name={name} active="Pending Requests" />
       <div style={{ maxWidth:680,margin:"0 auto",padding:"0 24px 48px" }}>
-        <div style={{ marginBottom:24,display:"flex",alignItems:"center",justifyContent:"space-between" }}>
+        <div style={{ marginBottom:24,marginTop:28,display:"flex",alignItems:"center",justifyContent:"space-between" }}>
           <div>
             <h1 style={{ fontSize:28,fontWeight:800,color:"#111827",marginBottom:4 }}>Pending Requests</h1>
             <p style={{ fontSize:14,color:"#6b7280" }}>Accept or decline incoming ride requests</p>

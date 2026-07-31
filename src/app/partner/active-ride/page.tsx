@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import PartnerNav from "../components/PartnerNav";
 
 const API = "http://localhost:5000/api";
 
@@ -14,30 +15,10 @@ interface Booking {
   createdAt: string;
 }
 
-function PartnerNav({ name }: { name: string }) {
-  const initials = name.split(" ").map((w) => w[0]).join("").toUpperCase().slice(0, 2) || "V";
-  const links = [
-    { label: "Active Ride", href: "/partner/active-ride" },
-    { label: "Pending Requests", href: "/partner/pending-requests" },
-    { label: "My Bookings", href: "/partner/bookings" },
-  ];
-  return (
-    <div style={{ background: "#111827", padding: "0 32px", display: "flex", alignItems: "center", justifyContent: "space-between", height: 60, marginBottom: 32 }}>
-      <span style={{ fontSize: 18, fontWeight: 800, color: "#fff", letterSpacing: "-0.5px", fontStyle: "italic" }}>Vëlox</span>
-      <div style={{ display: "flex", gap: 32 }}>
-        {links.map((l) => (
-          <a key={l.label} href={l.href} style={{ fontSize: 13.5, color: l.label === "Active Ride" ? "#fff" : "rgba(255,255,255,0.55)", textDecoration: "none", fontWeight: l.label === "Active Ride" ? 700 : 500 }}>{l.label}</a>
-        ))}
-      </div>
-      <div style={{ width: 36, height: 36, borderRadius: "50%", background: "linear-gradient(135deg,#2563eb,#60a5fa)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 13, fontWeight: 700 }}>{initials}</div>
-    </div>
-  );
-}
-
 function StatusBadge({ status }: { status: string }) {
   const map: Record<string, { label: string; bg: string; color: string; dot: string }> = {
     accepted:    { label: "Waiting for customer", bg: "#fefce8", color: "#854d0e", dot: "#eab308" },
-    arrived:     { label: "Arrived at pickup",     bg: "#fefce8", color: "#854d0e", dot: "#f59e0b" },
+    arrived:     { label: "Arrived at pickup",    bg: "#fefce8", color: "#854d0e", dot: "#f59e0b" },
     in_progress: { label: "Ride in progress",     bg: "#f0fdf4", color: "#15803d", dot: "#22c55e" },
     completed:   { label: "Completed",            bg: "#f3f4f6", color: "#374151", dot: "#9ca3af" },
     cancelled:   { label: "Cancelled",            bg: "#fef2f2", color: "#b91c1c", dot: "#ef4444" },
@@ -52,8 +33,8 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 function ActiveRideCard({ ride, onEndRide, onCancelRide }: { ride: Booking; onEndRide: () => void; onCancelRide: () => void }) {
-  const [elapsed, setElapsed] = useState(0);
-  const [ending,  setEnding]  = useState(false);
+  const [elapsed,    setElapsed]    = useState(0);
+  const [ending,     setEnding]     = useState(false);
   const [cancelling, setCancelling] = useState(false);
 
   useEffect(() => {
@@ -64,8 +45,8 @@ function ActiveRideCard({ ride, onEndRide, onCancelRide }: { ride: Booking; onEn
     return () => clearInterval(t);
   }, [ride.createdAt]);
 
-  const mins = Math.floor(elapsed / 60).toString().padStart(2, "0");
-  const secs = (elapsed % 60).toString().padStart(2, "0");
+  const mins = Math.floor(elapsed / 60).toString().padStart(2, "00");
+  const secs = (elapsed % 60).toString().padStart(2, "00");
 
   const handleEndRide = async () => {
     if (!confirm("End this ride?")) return;
@@ -121,7 +102,6 @@ function ActiveRideCard({ ride, onEndRide, onCancelRide }: { ride: Booking; onEn
       </div>
 
       <div style={{ padding: "20px 24px" }}>
-
         <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 16px", background: "#f9fafb", borderRadius: 12, marginBottom: 20, border: "1px solid #f3f4f6" }}>
           <span style={{ fontSize: 24 }}>{vehicleEmoji[ride.vehicle] || "🚗"}</span>
           <div>
@@ -160,24 +140,16 @@ function ActiveRideCard({ ride, onEndRide, onCancelRide }: { ride: Booking; onEn
         </div>
 
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 10 }}>
-          <button
-            onClick={openNavigate}
-            style={{ padding: "13px", borderRadius: 12, border: "1.5px solid #e5e7eb", background: "#fff", color: "#374151", fontSize: 14, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+          <button onClick={openNavigate} style={{ padding: "13px", borderRadius: 12, border: "1.5px solid #e5e7eb", background: "#fff", color: "#374151", fontSize: 14, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
             Navigate
           </button>
-          <button
-            onClick={handleEndRide}
-            disabled={ending || cancelling}
-            style={{ padding: "13px", borderRadius: 12, border: "none", background: ending ? "#6b7280" : "#ef4444", color: "#fff", fontSize: 14, fontWeight: 600, cursor: ending || cancelling ? "not-allowed" : "pointer" }}>
+          <button onClick={handleEndRide} disabled={ending || cancelling} style={{ padding: "13px", borderRadius: 12, border: "none", background: ending ? "#6b7280" : "#ef4444", color: "#fff", fontSize: 14, fontWeight: 600, cursor: ending || cancelling ? "not-allowed" : "pointer" }}>
             {ending ? "Ending..." : "End Ride"}
           </button>
         </div>
 
-        <button
-          onClick={handleCancelRide}
-          disabled={ending || cancelling}
-          style={{ width: "100%", padding: "12px", borderRadius: 12, border: "1.5px solid #fecaca", background: "#fff", color: "#dc2626", fontSize: 13.5, fontWeight: 600, cursor: ending || cancelling ? "not-allowed" : "pointer" }}>
+        <button onClick={handleCancelRide} disabled={ending || cancelling} style={{ width: "100%", padding: "12px", borderRadius: 12, border: "1.5px solid #fecaca", background: "#fff", color: "#dc2626", fontSize: 13.5, fontWeight: 600, cursor: ending || cancelling ? "not-allowed" : "pointer" }}>
           {cancelling ? "Cancelling..." : "Cancel Ride"}
         </button>
       </div>
@@ -189,7 +161,6 @@ function RideCompleted({ durationSecs, fare }: { durationSecs: number; fare: num
   const mins = Math.floor(durationSecs / 60);
   const secs = durationSecs % 60;
   const durationText = mins > 0 ? `${mins} min ${secs} sec` : `${secs} sec`;
-
   return (
     <div style={{ background: "#fff", borderRadius: 16, border: "1px solid #e5e7eb", padding: "48px 32px", textAlign: "center" }}>
       <div style={{ width: 72, height: 72, borderRadius: "50%", background: "#dcfce7", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 20px" }}>
@@ -197,7 +168,6 @@ function RideCompleted({ durationSecs, fare }: { durationSecs: number; fare: num
       </div>
       <h3 style={{ fontSize: 22, fontWeight: 700, color: "#111827", marginBottom: 8 }}>Ride Completed! 🎉</h3>
       <p style={{ fontSize: 14, color: "#9ca3af", lineHeight: 1.6, marginBottom: 24 }}>Great job! The ride has been marked as completed.</p>
-
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, maxWidth: 360, margin: "0 auto" }}>
         <div style={{ background: "#f9fafb", borderRadius: 12, padding: "14px 16px", border: "1px solid #f3f4f6" }}>
           <p style={{ fontSize: 10, fontWeight: 800, color: "#9ca3af", letterSpacing: "1.2px", textTransform: "uppercase", marginBottom: 6 }}>Ride Duration</p>
@@ -254,7 +224,6 @@ export default function ActiveRidePage() {
 
   const rideRef = useRef<Booking | null>(null);
   useEffect(() => { rideRef.current = ride; }, [ride]);
-
   const finishedIdRef = useRef<string | null>(null);
 
   useEffect(() => {
@@ -303,25 +272,17 @@ export default function ActiveRidePage() {
         if (rideRef.current) markCompleted();
         else setRide(null);
       }
-    } catch {
-      // silent fail
-    } finally {
-      setLoading(false);
-    }
+    } catch {}
+    finally { setLoading(false); }
   }, [markCompleted, markCancelled]);
 
   const checkRideStatus = useCallback(async (id: string) => {
     try {
       const res  = await fetch(`${API}/booking/${id}/status`);
       const data = await res.json();
-      if (data.success && data.status === "completed") {
-        markCompleted();
-      } else if (data.success && data.status === "cancelled") {
-        markCancelled();
-      }
-    } catch {
-      // silent fail
-    }
+      if (data.success && data.status === "completed") markCompleted();
+      else if (data.success && data.status === "cancelled") markCancelled();
+    } catch {}
   }, [markCompleted, markCancelled]);
 
   useEffect(() => {
@@ -342,14 +303,6 @@ export default function ActiveRidePage() {
     return () => clearTimeout(t);
   }, [completed, cancelled]);
 
-  const handleEndRide = () => {
-    markCompleted();
-  };
-
-  const handleCancelRide = () => {
-    markCancelled();
-  };
-
   if (loading) return (
     <div style={{ minHeight: "100vh", background: "#f3f4f6", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "Inter,sans-serif" }}>
       <div style={{ width: 32, height: 32, border: "2px solid #e5e7eb", borderTopColor: "#111827", borderRadius: "50%", animation: "spin 0.7s linear infinite" }} />
@@ -359,14 +312,14 @@ export default function ActiveRidePage() {
 
   return (
     <div style={{ minHeight: "100vh", background: "#f3f4f6", fontFamily: "Inter,sans-serif" }}>
-      <PartnerNav name={name} />
+      <PartnerNav name={name} active="Active Ride" />
       <div style={{ maxWidth: 720, margin: "0 auto", padding: "0 24px 48px" }}>
-        <div style={{ marginBottom: 24, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <div style={{ marginBottom: 24, marginTop: 28, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div>
             <h1 style={{ fontSize: 28, fontWeight: 800, color: "#111827", marginBottom: 4 }}>Active Ride</h1>
             <p style={{ fontSize: 14, color: "#6b7280" }}>Your current trip details</p>
           </div>
-          {ride && <StatusBadge status={ride.status} />}
+          {ride      && <StatusBadge status={ride.status} />}
           {completed && <StatusBadge status="completed" />}
           {cancelled && <StatusBadge status="cancelled" />}
         </div>
@@ -376,7 +329,7 @@ export default function ActiveRidePage() {
           : cancelled
             ? <RideCancelled />
             : ride
-              ? <ActiveRideCard ride={ride} onEndRide={handleEndRide} onCancelRide={handleCancelRide} />
+              ? <ActiveRideCard ride={ride} onEndRide={markCompleted} onCancelRide={markCancelled} />
               : <NoRide />
         }
       </div>
