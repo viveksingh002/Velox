@@ -14,7 +14,9 @@ export default function DashboardPage() {
         window.location.href = '/signin'
       } else {
         setUser(data.user)
-        setLoading(false)
+const displayName = data.user?.user_metadata?.full_name || data.user?.email?.split('@')[0] || 'User'
+localStorage.setItem("velox_user_name", displayName)
+setLoading(false)
       }
     })
   }, [])

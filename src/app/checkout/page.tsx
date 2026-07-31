@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
+import { supabase } from '@/lib/supabase'
 import Link from 'next/link'
 
 function VehicleIcon({ type }: { type: string }) {
@@ -99,29 +100,39 @@ export default function CheckoutPage() {
   useEffect(() => () => stopPolling(), [])
 
   // Request ride
-  const handleRequest = async () => {
-    setStage('loading')
-    try {
-      const res  = await fetch(`${API}/booking`, {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ pickup, drop, vehicle, price: Number(fare) }),
-      })
-      const data = await res.json()
-      if (data.success) {
-        setBookingId(data.data._id)
-        setStage('finding')
-        startPolling(data.data._id)
-      } else {
-        alert('Booking failed. Try again.')
-        setStage('idle')
-      }
-    } catch {
-      alert('Server se connect nahi ho pa raha!')
+const handleRequest = async () => {
+  setStage('loading')
+  try {
+    const { data: authData } = await supabase.auth.getUser()
+    const customerName = authData.user?.user_metadata?.full_name
+      || authData.user?.email?.split('@')[0]
+      || "Customer"
+
+    const res = await fetch(`${API}/booking`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        pickup,
+        drop,
+        vehicle,
+        price: Number(fare),
+        customerName,
+      }),
+    })
+    const data = await res.json()
+    if (data.success) {
+      setBookingId(data.data._id)
+      setStage('finding')
+      startPolling(data.data._id)
+    } else {
+      alert('Booking failed. Try again.')
       setStage('idle')
     }
+  } catch {
+    alert('Unable to connect to server. Please try again.')
+    setStage('idle')
   }
-
+}
   const handlePayment = () => {
     if (!payMethod) return
     // Navigate to tracking page
