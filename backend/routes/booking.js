@@ -111,6 +111,22 @@ router.post("/booking/:id/verify-otp", async (req, res) => {
   }
 });
 
+router.patch("/booking/:id/cancel", async (req, res) => {
+  try {
+    const booking = await Booking.findByIdAndUpdate(
+      req.params.id,
+      { status: "cancelled" },
+      { new: true }
+    );
+    res.json({ success: true, data: booking });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+module.exports = router;
+
+
 router.patch("/booking/:id/complete", async (req, res) => {
   try {
     const booking = await Booking.findByIdAndUpdate(
