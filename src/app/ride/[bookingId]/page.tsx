@@ -172,10 +172,10 @@ export default function RideTrackingPage() {
 
           {/* OTP Box */}
           {showOtp && (
-            <div style={{ margin: '16px 24px 0', borderRadius: 16, border: '2px solid #fbbf24' }}>
+            <div style={{ margin: '16px 24px 0', borderRadius: 16, border: '2px solid #0b0068' }}>
 
               <div style={{ background: '#111827', borderRadius: '14px 14px 0 0', padding: '13px 16px' }}>
-                <span style={{ color: '#fbbf24', fontSize: 15, marginRight: 8 }}>🔑</span>
+                <span style={{ color: '#0b0068', fontSize: 15, marginRight: 8 }}>🔑</span>
                 <span style={{ color: '#fff', fontWeight: 800, fontSize: 12, letterSpacing: 1 }}>YOUR RIDE OTP</span>
               </div>
 
@@ -195,7 +195,7 @@ export default function RideTrackingPage() {
                         height: 68,
                         borderRadius: 14,
                         background: '#fff',
-                        border: '2px solid #fbbf24',
+                        border: '2px solid #0b0068',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
@@ -220,7 +220,7 @@ export default function RideTrackingPage() {
                     fontWeight: 700,
                     cursor: 'pointer',
                     fontFamily: 'inherit',
-                    border: '2px solid #fbbf24',
+                    border: '2px solid #0b0068',
                     background: otpCopied ? '#111' : '#fff',
                     color: otpCopied ? '#fff' : '#92400e',
                     transition: 'all .2s',
