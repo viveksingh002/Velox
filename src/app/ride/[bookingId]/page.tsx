@@ -119,7 +119,7 @@ export default function RideTrackingPage() {
   }
 
   const etaMins    = Math.ceil(eta / 60)
-  const showOtp    = status === 'arrived' || status === 'in_progress'
+  const showOtp = status === 'arrived'
   const displayOtp = otp.length > 0 ? otp : '8472'
 
   const copyOtp = () => {
