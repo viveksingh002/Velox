@@ -30,6 +30,7 @@ function BookingCard({ booking }: { booking: any }) {
   const [expanded, setExpanded] = useState(false);
   const isCompleted = booking.status === "completed";
   const isCancelled = booking.status === "cancelled";
+  const hasPrice = (isCompleted || isCancelled) && booking.price;
 
   const customerName = booking.customerName || "Customer";
   const initials     = customerName.split(" ").map((w: string) => w[0]).join("").slice(0, 2).toUpperCase();
@@ -51,8 +52,8 @@ function BookingCard({ booking }: { booking: any }) {
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 3 }}>
             <p style={{ fontSize: 14, fontWeight: 700, color: "#111827" }}>{customerName}</p>
-            <p style={{ fontSize: 15, fontWeight: 800, color: isCompleted ? "#111827" : "#9ca3af" }}>
-              {isCompleted ? `₹${booking.price}` : "—"}
+            <p style={{ fontSize: 15, fontWeight: 800, color: hasPrice ? "#111827" : "#9ca3af" }}>
+              {hasPrice ? `₹${booking.price}` : "—"}
             </p>
           </div>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
@@ -85,7 +86,8 @@ function BookingCard({ booking }: { booking: any }) {
               {[
                 booking.vehicle    && { label: booking.vehicle },
                 booking.driverName && { label: `Driver: ${booking.driverName}` },
-                isCompleted        && { label: `₹${booking.price} earned` },
+                isCompleted && booking.price && { label: `₹${booking.price} earned` },
+                isCancelled && booking.price && { label: `₹${booking.price} (cancelled)` },
               ].filter(Boolean).map((chip: any) => (
                 <span key={chip.label} style={{ fontSize: 12, fontWeight: 500, padding: "4px 12px", borderRadius: 99, background: "#f3f4f6", color: "#374151" }}>{chip.label}</span>
               ))}
