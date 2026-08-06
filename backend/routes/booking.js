@@ -2,6 +2,7 @@ const express = require("express");
 const router  = express.Router();
 const Booking = require("../models/Booking");
 
+// POST - create booking
 router.post("/booking", async (req, res) => {
   try {
     const otp     = String(Math.floor(1000 + Math.random() * 9000));
@@ -12,6 +13,7 @@ router.post("/booking", async (req, res) => {
   }
 });
 
+// GET - active booking (BEFORE /:id)
 router.get("/booking/active", async (req, res) => {
   try {
     const booking = await Booking.findOne({
@@ -24,15 +26,38 @@ router.get("/booking/active", async (req, res) => {
   }
 });
 
-router.get("/booking", async (req, res) => {
+// GET - earnings last 7 days (BEFORE /:id)
+router.get("/booking/earnings", async (req, res) => {
   try {
-    const bookings = await Booking.find().sort({ createdAt: -1 });
-    res.json(bookings);
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
+    sevenDaysAgo.setHours(0, 0, 0, 0);
+
+    const bookings = await Booking.find({
+      status: "completed",
+      createdAt: { $gte: sevenDaysAgo },
+    });
+
+    const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    const result = [];
+
+    for (let i = 6; i >= 0; i--) {
+      const date = new Date();
+      date.setDate(date.getDate() - i);
+      const dayLabel = days[date.getDay()];
+      const dayEarnings = bookings
+        .filter((b) => new Date(b.createdAt).toDateString() === date.toDateString())
+        .reduce((sum, b) => sum + (b.price || 0), 0);
+      result.push({ day: dayLabel, amount: dayEarnings });
+    }
+
+    res.json({ success: true, data: result });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
 });
 
+// GET - pending bookings (BEFORE /:id)
 router.get("/booking/pending", async (req, res) => {
   try {
     const bookings = await Booking.find({ status: "pending" }).sort({ createdAt: -1 });
@@ -42,6 +67,17 @@ router.get("/booking/pending", async (req, res) => {
   }
 });
 
+// GET - all bookings
+router.get("/booking", async (req, res) => {
+  try {
+    const bookings = await Booking.find().sort({ createdAt: -1 });
+    res.json(bookings);
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// GET - booking status
 router.get("/booking/:id/status", async (req, res) => {
   try {
     const booking = await Booking.findById(req.params.id);
@@ -52,6 +88,7 @@ router.get("/booking/:id/status", async (req, res) => {
   }
 });
 
+// PATCH - accept
 router.patch("/booking/:id/accept", async (req, res) => {
   try {
     const booking = await Booking.findByIdAndUpdate(
@@ -65,6 +102,7 @@ router.patch("/booking/:id/accept", async (req, res) => {
   }
 });
 
+// PATCH - decline
 router.patch("/booking/:id/decline", async (req, res) => {
   try {
     const booking = await Booking.findByIdAndUpdate(
@@ -78,16 +116,15 @@ router.patch("/booking/:id/decline", async (req, res) => {
   }
 });
 
+// PATCH - arrive
 router.patch("/booking/:id/arrive", async (req, res) => {
   try {
     const existing = await Booking.findById(req.params.id);
     if (!existing) return res.status(404).json({ success: false, message: "Booking not found" });
-
     const updateData = { status: "arrived" };
     if (!existing.otp || existing.otp.trim() === "") {
       updateData.otp = String(Math.floor(1000 + Math.random() * 9000));
     }
-
     const booking = await Booking.findByIdAndUpdate(req.params.id, updateData, { new: true });
     res.json({ success: true, data: booking });
   } catch (err) {
@@ -95,6 +132,7 @@ router.patch("/booking/:id/arrive", async (req, res) => {
   }
 });
 
+// POST - verify OTP
 router.post("/booking/:id/verify-otp", async (req, res) => {
   try {
     const booking = await Booking.findById(req.params.id);
@@ -111,6 +149,7 @@ router.post("/booking/:id/verify-otp", async (req, res) => {
   }
 });
 
+// PATCH - cancel
 router.patch("/booking/:id/cancel", async (req, res) => {
   try {
     const booking = await Booking.findByIdAndUpdate(
@@ -124,9 +163,7 @@ router.patch("/booking/:id/cancel", async (req, res) => {
   }
 });
 
-module.exports = router;
-
-
+// PATCH - complete
 router.patch("/booking/:id/complete", async (req, res) => {
   try {
     const booking = await Booking.findByIdAndUpdate(
