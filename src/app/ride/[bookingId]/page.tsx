@@ -286,20 +286,22 @@ export default function RideTrackingPage() {
           </div>
 
           {/* Action Buttons */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, padding: '16px 24px 0' }}>
-            <button style={{ padding: 12, borderRadius: 12, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, background: '#fff', color: '#111', border: '1.5px solid #e5e7eb' }}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-              </svg>
-              Message
-            </button>
-            <button
-              onClick={() => { if (confirm('Are you sure you want to cancel?')) router.push('/') }}
-              style={{ padding: 12, borderRadius: 12, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, background: '#111', color: '#fff', border: 'none' }}
-            >
-              Cancel Ride
-            </button>
-          </div>
+          {status !== 'completed' && (
+  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, padding: '16px 24px 0' }}>
+    <button style={{ padding: 12, borderRadius: 12, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, background: '#fff', color: '#111', border: '1.5px solid #e5e7eb' }}>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+      </svg>
+      Message
+    </button>
+    <button
+      onClick={() => { if (confirm('Are you sure you want to cancel?')) router.push('/') }}
+      style={{ padding: 12, borderRadius: 12, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, background: '#111', color: '#fff', border: 'none' }}
+    >
+      Cancel Ride
+    </button>
+  </div>
+)}
 
           {/* Route */}
           <div style={{ padding: '16px 24px', borderTop: '1px solid #f5f5f5', marginTop: 16 }}>
