@@ -30,27 +30,42 @@ export default function Navbar() {
     supabase.auth.getUser().then(({ data }) => {
       const u = data.user ?? null;
       setUser(u);
-      if (u) checkPartnerStatus(u.id);
+      if (u) checkPartnerStatus(u);
     });
 
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
       const u = session?.user ?? null;
       setUser(u);
-      if (u) checkPartnerStatus(u.id);
+      if (u) checkPartnerStatus(u);
       else setIsPartner(false);
     });
 
     return () => listener.subscription.unsubscribe();
   }, []);
 
-  // Check if this specific user has already registered as a partner
-  const checkPartnerStatus = async (userId: string) => {
-    const { data } = await supabase
-      .from("vendors")
-      .select("id")
-      .eq("user_id", userId)
-      .maybeSingle();
-    setIsPartner(!!data);
+  // Check if this specific user has already registered as a partner.
+  // Vendor records live in the Express/MongoDB backend (keyed by email),
+  // NOT in Supabase — so we must check that backend, not a supabase table.
+  const checkPartnerStatus = async (u: any) => {
+    if (!u?.email) { setIsPartner(false); return; }
+    try {
+      const res  = await fetch(`http://localhost:5000/api/vendor/status/${encodeURIComponent(u.email)}`);
+      const data = await res.json();
+      if (data.success) {
+        setIsPartner(true);
+        // keep partner dashboard's localStorage in sync so it can
+        // immediately identify this user without re-registering
+        localStorage.setItem("velox_vendor_email", u.email);
+        const name = u.user_metadata?.full_name || u.email.split("@")[0];
+        localStorage.setItem("velox_vendor_name", name);
+      } else {
+        setIsPartner(false);
+      }
+    } catch {
+      // backend unreachable — don't wrongly force re-registration,
+      // but also don't claim partner status we couldn't verify
+      setIsPartner(false);
+    }
   };
 
   useEffect(() => {
@@ -72,7 +87,7 @@ export default function Navbar() {
   };
 
   const handleBecomePartner = () => {
-    // Per-user check — isPartner is based on logged-in user's ID
+    // Per-user check — isPartner is based on backend vendor record for this user's email
     if (isPartner) {
       window.location.href = "/partner/dashboard";
     } else {

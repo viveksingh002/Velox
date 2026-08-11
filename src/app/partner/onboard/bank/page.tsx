@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabase";
 
 interface Step3Data {
   accountName: string;
@@ -74,10 +75,24 @@ export default function BankPage() {
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState("");
   const [focusedField, setFocusedField] = useState<string | null>(null);
+  const [loginEmail, setLoginEmail] = useState<string | null>(null);
+
+  // Get the logged-in user's email from Supabase — this MUST be the
+  // same email used everywhere else (Navbar check, dashboard lookup),
+  // otherwise "Become a Partner" will never recognize this registration.
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => {
+      setLoginEmail(data.user?.email ?? null);
+    });
+  }, []);
 
   const valid = data.accountName.trim() && data.accountNumber.trim() && data.ifsc.trim() && data.mobile.length === 10;
 
   const handleSubmit = async () => {
+    if (!loginEmail) {
+      setError("Could not verify your login email. Please sign in again.");
+      return;
+    }
     setSubmitting(true);
     setError("");
     try {
@@ -90,7 +105,7 @@ export default function BankPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name:  data.accountName,
-          email: `${data.mobile}@velox.partner`,
+          email: loginEmail,          // 👈 real Supabase login email, not a fake mobile-based one
           phone: data.mobile,
           vehicle: {
             type:   vehicle.vehicleType  || "",
@@ -112,9 +127,9 @@ export default function BankPage() {
       });
       const json = await res.json();
       if (json.success) {
-        // Store name for dashboard
+        // Store name/email for dashboard — same email used at login
         localStorage.setItem("velox_vendor_name",  data.accountName);
-        localStorage.setItem("velox_vendor_email", `${data.mobile}@velox.partner`);
+        localStorage.setItem("velox_vendor_email", loginEmail);
         // Clear temp keys
         localStorage.removeItem("onboard_vehicle");
         localStorage.removeItem("onboard_documents");
