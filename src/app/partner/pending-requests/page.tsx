@@ -49,6 +49,7 @@ const handleAccept = async () => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ 
         driverName: localStorage.getItem("velox_vendor_name") || "Driver",
+        driverEmail: localStorage.getItem("velox_vendor_email") || null,
       }),
     });
     onAccept(req.id);

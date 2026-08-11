@@ -502,13 +502,15 @@ export default function PartnerDashboard() {
     finally { setLoading(false); }
   };
 
-  const fetchEarnings = async () => {
-    try {
-      const res  = await fetch("http://localhost:5000/api/booking/earnings");
-      const data = await res.json();
-      if (data.success && Array.isArray(data.data)) setEarningsData(data.data);
-    } catch {}
-  };
+const fetchEarnings = async () => {
+  const email = localStorage.getItem("velox_vendor_email");
+  if (!email) return;
+  try {
+    const res  = await fetch(`http://localhost:5000/api/booking/earnings?email=${encodeURIComponent(email)}`);
+    const data = await res.json();
+    if (data.success && Array.isArray(data.data)) setEarningsData(data.data);
+  } catch {}
+};
 
   useEffect(() => {
     const savedName = localStorage.getItem("velox_vendor_name");

@@ -26,15 +26,23 @@ router.get("/booking/active", async (req, res) => {
   }
 });
 
-// GET - earnings last 7 days (BEFORE /:id)
+// GET - earnings last 7 days for the LOGGED-IN partner only (BEFORE /:id)
 router.get("/booking/earnings", async (req, res) => {
   try {
+    const { email } = req.query;
+
+    if (!email) {
+      return res.status(400).json({ success: false, message: "email query param is required" });
+    }
+
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
     sevenDaysAgo.setHours(0, 0, 0, 0);
 
+    // 👇 sirf isi partner (driverEmail) ki completed bookings uthao
     const bookings = await Booking.find({
       status: "completed",
+      driverEmail: email,
       createdAt: { $gte: sevenDaysAgo },
     });
 
@@ -90,12 +98,16 @@ router.get("/booking/:id/status", async (req, res) => {
   }
 });
 
-// PATCH - accept
+// PATCH - accept (ab driverEmail bhi save hoga)
 router.patch("/booking/:id/accept", async (req, res) => {
   try {
     const booking = await Booking.findByIdAndUpdate(
       req.params.id,
-      { status: "accepted", driverName: req.body.driverName || "Driver" },
+      {
+        status: "accepted",
+        driverName: req.body.driverName || "Driver",
+        driverEmail: req.body.driverEmail || null, // 👈 naya field
+      },
       { new: true }
     );
     res.json({ success: true, data: booking });
