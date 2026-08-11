@@ -21,10 +21,11 @@ export default function RideTrackingPage() {
   const mapRef      = useRef<HTMLDivElement>(null)
   const mapInstance = useRef<any>(null)
 
-  const [eta,       setEta]       = useState(180)
-  const [status,    setStatus]    = useState<'on_way' | 'arrived' | 'in_progress' | 'completed'>('on_way')
-  const [otp,       setOtp]       = useState('')
-  const [otpCopied, setOtpCopied] = useState(false)
+  const [eta,        setEta]        = useState(180)
+  const [status,     setStatus]     = useState<'on_way' | 'arrived' | 'in_progress' | 'completed'>('on_way')
+  const [otp,        setOtp]        = useState('')
+  const [otpCopied,  setOtpCopied]  = useState(false)
+  const [cancelling, setCancelling] = useState(false)
 
   const pollStatus = useCallback(async () => {
     try {
@@ -122,10 +123,33 @@ export default function RideTrackingPage() {
   const showOtp = status === 'arrived'
   const displayOtp = otp.length > 0 ? otp : '8472'
 
+  // Cancel is allowed until the OTP is actually entered and the ride starts.
+  // So cancellation stays available for 'on_way' and 'arrived',
+  // and only gets disabled once status becomes 'in_progress'.
+  const canCancel = status !== 'in_progress'
+
   const copyOtp = () => {
     navigator.clipboard.writeText(displayOtp)
     setOtpCopied(true)
     setTimeout(() => setOtpCopied(false), 2000)
+  }
+
+  const cancelRide = async () => {
+    if (!confirm('Are you sure you want to cancel?')) return
+    setCancelling(true)
+    try {
+      const res  = await fetch(`${API}/booking/${bookingId}/cancel`, { method: 'PATCH' })
+      const data = await res.json()
+      if (data.success) {
+        router.push('/')
+      } else {
+        alert('Could not cancel the ride. Please try again.')
+        setCancelling(false)
+      }
+    } catch {
+      alert('Network error. Please try again.')
+      setCancelling(false)
+    }
   }
 
   const statusConfig = {
@@ -287,21 +311,56 @@ export default function RideTrackingPage() {
 
           {/* Action Buttons */}
           {status !== 'completed' && (
-  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, padding: '16px 24px 0' }}>
-    <button style={{ padding: 12, borderRadius: 12, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, background: '#fff', color: '#111', border: '1.5px solid #e5e7eb' }}>
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-      </svg>
-      Message
-    </button>
-    <button
-      onClick={() => { if (confirm('Are you sure you want to cancel?')) router.push('/') }}
-      style={{ padding: 12, borderRadius: 12, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, background: '#111', color: '#fff', border: 'none' }}
-    >
-      Cancel Ride
-    </button>
-  </div>
-)}
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: canCancel ? '1fr 1fr' : '1fr',
+                gap: 10,
+                padding: '16px 24px 0',
+              }}
+            >
+              <button
+                style={{
+                  padding: 12,
+                  borderRadius: 12,
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  fontFamily: 'inherit',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 6,
+                  background: canCancel ? '#fff' : '#111',
+                  color: canCancel ? '#111' : '#fff',
+                  border: canCancel ? '1.5px solid #e5e7eb' : 'none',
+                }}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                </svg>
+                Message
+              </button>
+
+              {canCancel && (
+                <button
+                  onClick={cancelRide}
+                  disabled={cancelling}
+                  style={{ padding: 12, borderRadius: 12, fontSize: 13, fontWeight: 600, cursor: cancelling ? 'wait' : 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, background: '#111', color: '#fff', border: 'none', opacity: cancelling ? 0.7 : 1 }}
+                >
+                  {cancelling ? 'Cancelling...' : 'Cancel Ride'}
+                </button>
+              )}
+            </div>
+          )}
+
+          {!canCancel && status !== 'completed' && (
+            <div style={{ padding: '10px 24px 0' }}>
+              <p style={{ fontSize: 11, color: '#9ca3af', fontWeight: 500, textAlign: 'center' }}>
+                Cancellation is unavailable — your ride has already started.
+              </p>
+            </div>
+          )}
 
           {/* Route */}
           <div style={{ padding: '16px 24px', borderTop: '1px solid #f5f5f5', marginTop: 16 }}>
