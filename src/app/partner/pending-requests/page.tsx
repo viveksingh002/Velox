@@ -41,19 +41,21 @@ function RequestCard({ req, onAccept, onDecline }: { req: Request; onAccept: (id
   const pct = (secs / req.expiresIn) * 100;
   const [accepting, setAccepting] = useState(false);
 
-  const handleAccept = async () => {
-    setAccepting(true);
-    try {
-      await fetch(`${API}/booking/${req.id}/accept`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ driverName: "Driver" }),
-      });
-      onAccept(req.id);
-    } catch {
-      setAccepting(false);
-    }
-  };
+const handleAccept = async () => {
+  setAccepting(true);
+  try {
+    await fetch(`${API}/booking/${req.id}/accept`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ 
+        driverName: localStorage.getItem("velox_vendor_name") || "Driver",
+      }),
+    });
+    onAccept(req.id);
+  } catch {
+    setAccepting(false);
+  }
+};
 
   return (
     <div style={{ background:"#fff",borderRadius:16,border:`1.5px solid ${expired?"#f3f4f6":"#e5e7eb"}`,overflow:"hidden",marginBottom:12,opacity:expired?0.5:1,transition:"opacity 0.3s" }}>

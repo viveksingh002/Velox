@@ -122,21 +122,22 @@ export default function BookingsPage() {
     fetchBookings();
   }, []);
 
-  const fetchBookings = async () => {
-    try {
-      const res  = await fetch(`${API}/booking`);
-      const data = await res.json();
-      const done = (Array.isArray(data) ? data : []).filter((b: any) =>
-        b.status === "completed" || b.status === "cancelled"
-      );
-      done.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-      setBookings(done);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
+const fetchBookings = async () => {
+  try {
+    const driverName = localStorage.getItem("velox_vendor_name") || "Driver";
+    const res  = await fetch(`${API}/booking?driverName=${encodeURIComponent(driverName)}`);
+    const data = await res.json();
+    const done = (Array.isArray(data) ? data : []).filter((b: any) =>
+      b.status === "completed" || b.status === "cancelled"
+    );
+    done.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    setBookings(done);
+  } catch (err) {
+    console.error(err);
+  } finally {
+    setLoading(false);
+  }
+};
 
   const filtered = bookings.filter((b) => {
     const matchTab    = activeTab === "All" || b.status === activeTab.toLowerCase();

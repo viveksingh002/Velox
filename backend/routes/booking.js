@@ -70,7 +70,9 @@ router.get("/booking/pending", async (req, res) => {
 // GET - all bookings
 router.get("/booking", async (req, res) => {
   try {
-    const bookings = await Booking.find().sort({ createdAt: -1 });
+    const { driverName } = req.query;
+    const query = driverName ? { driverName } : {};
+    const bookings = await Booking.find(query).sort({ createdAt: -1 });
     res.json(bookings);
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });

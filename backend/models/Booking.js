@@ -1,5 +1,3 @@
-const mongoose = require("mongoose");
-
 const bookingSchema = new mongoose.Schema({
   pickup:             String,
   drop:               String,
@@ -9,6 +7,7 @@ const bookingSchema = new mongoose.Schema({
   price:              Number,
   status:             { type: String, default: "pending" },
   driverName:         { type: String, default: "" },
+  driverEmail:        { type: String, default: "" }, 
   customerName:       { type: String, default: "Customer" },
   customerPhone:      { type: String, default: "" },
   paymentStatus:      { type: String, default: "cash" },
