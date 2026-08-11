@@ -364,6 +364,23 @@ export default function NavigatePage() {
     fetchActiveBooking();
   }, [fetchActiveBooking]);
 
+
+useEffect(() => {
+  if (!booking || showThankYou) return;
+  const interval = setInterval(async () => {
+    try {
+      const res  = await fetch(`${API}/booking/${booking._id}/status`);
+      const data = await res.json();
+      if (data.success && data.status === "cancelled") {
+        clearInterval(interval);
+        alert("Ride was cancelled by the customer.");
+        window.location.href = "/partner/pending-requests";
+      }
+    } catch {}
+  }, 5000);
+  return () => clearInterval(interval);
+}, [booking, showThankYou]);
+
   const handleArrive = async () => {
     if (!booking) return;
     setArriving(true);
