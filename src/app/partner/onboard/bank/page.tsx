@@ -105,7 +105,7 @@ export default function BankPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name:  data.accountName,
-          email: loginEmail,          // 👈 real Supabase login email, not a fake mobile-based one
+          email: loginEmail,          
           phone: data.mobile,
           vehicle: {
             type:   vehicle.vehicleType  || "",
