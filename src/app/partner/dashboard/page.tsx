@@ -235,6 +235,7 @@ function PricingModal({ onClose, onSubmitted }: { onClose: () => void; onSubmitt
                   const v = e.target.value;
                   if (v === "" || Number(v) >= 0) f.set(v);
                 }}
+                onWheel={(e) => e.currentTarget.blur()}
                 style={{ width: "100%", padding: "12px 0", border: "none", borderBottom: "1.5px solid #e5e7eb", outline: "none", fontSize: 14, color: "#111827", background: "transparent", fontFamily: "Inter,sans-serif" }}
               />
             </div>
