@@ -324,7 +324,7 @@ function ThankYouScreen({ booking, rating, onBack }: { booking: Booking; rating:
           </div>
           <div style={{ background: "#f9fafb", borderRadius: 12, padding: "12px 14px", border: "1px solid #f3f4f6" }}>
             <div style={{ fontSize: 9, fontWeight: 800, color: "#9ca3af", letterSpacing: "1.2px", textTransform: "uppercase", marginBottom: 5 }}>Vehicle</div>
-            <div style={{ fontSize: 14, fontWeight: 800, color: "#0a0a0a" }}>{booking.model}</div>
+            <div style={{ fontSize: 14, fontWeight: 800, color: "#0a0a0a" }}>{booking.model || booking.vehicle || "—"}</div>
           </div>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
