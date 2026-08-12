@@ -236,6 +236,7 @@ function PricingModal({ onClose, onSubmitted }: { onClose: () => void; onSubmitt
                   if (v === "" || Number(v) >= 0) f.set(v);
                 }}
                 onWheel={(e) => e.currentTarget.blur()}
+                className="no-spinner-input"
                 style={{ width: "100%", padding: "12px 0", border: "none", borderBottom: "1.5px solid #e5e7eb", outline: "none", fontSize: 14, color: "#111827", background: "transparent", fontFamily: "Inter,sans-serif" }}
               />
             </div>
@@ -255,6 +256,9 @@ function PricingModal({ onClose, onSubmitted }: { onClose: () => void; onSubmitt
       <style>{`
         .pricing-modal-scroll::-webkit-scrollbar { display: none; }
         .pricing-modal-scroll { scrollbar-width: none; -ms-overflow-style: none; }
+        .no-spinner-input::-webkit-outer-spin-button,
+        .no-spinner-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+        .no-spinner-input { -moz-appearance: textfield; appearance: textfield; }
       `}</style>
     </div>
   );
