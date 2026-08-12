@@ -196,7 +196,7 @@ function PricingModal({ onClose, onSubmitted }: { onClose: () => void; onSubmitt
 
   return (
     <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 999, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
-      <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 440, background: "#fff", borderRadius: 24, boxShadow: "0 4px 40px rgba(0,0,0,0.25)", maxHeight: "90vh", overflowY: "auto" }}>
+      <div onClick={(e) => e.stopPropagation()} className="pricing-modal-scroll" style={{ width: "100%", maxWidth: 440, background: "#fff", borderRadius: 24, boxShadow: "0 4px 40px rgba(0,0,0,0.25)", maxHeight: "90vh", overflowY: "auto" }}>
         <div style={{ padding: "28px 28px 32px" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 }}>
             <div>
@@ -226,8 +226,17 @@ function PricingModal({ onClose, onSubmitted }: { onClose: () => void; onSubmitt
           ].map((f) => (
             <div key={f.label} style={{ marginBottom: 18 }}>
               <p style={{ fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 8 }}>{f.label}</p>
-              <input type="number" placeholder={f.ph} value={f.val} onChange={(e) => f.set(e.target.value)}
-                style={{ width: "100%", padding: "12px 0", border: "none", borderBottom: "1.5px solid #e5e7eb", outline: "none", fontSize: 14, color: "#111827", background: "transparent", fontFamily: "Inter,sans-serif" }} />
+              <input
+                type="number"
+                min="0"
+                placeholder={f.ph}
+                value={f.val}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  if (v === "" || Number(v) >= 0) f.set(v);
+                }}
+                style={{ width: "100%", padding: "12px 0", border: "none", borderBottom: "1.5px solid #e5e7eb", outline: "none", fontSize: 14, color: "#111827", background: "transparent", fontFamily: "Inter,sans-serif" }}
+              />
             </div>
           ))}
 
@@ -242,6 +251,10 @@ function PricingModal({ onClose, onSubmitted }: { onClose: () => void; onSubmitt
           </div>
         </div>
       </div>
+      <style>{`
+        .pricing-modal-scroll::-webkit-scrollbar { display: none; }
+        .pricing-modal-scroll { scrollbar-width: none; -ms-overflow-style: none; }
+      `}</style>
     </div>
   );
 }
