@@ -4,6 +4,9 @@ const vendorSchema = new mongoose.Schema({
   name:            { type: String, required: true },
   email:           { type: String, required: true, unique: true },
   phone:           { type: String, required: true },
+  avatar:          { type: String, default: "" }, // base64 or hosted URL — profile picture
+  rating:          { type: Number, default: 0 },
+  totalRides:      { type: Number, default: 0 },
   vendorStatus:    { type: String, enum: ["pending","approved","rejected"], default: "pending" },
   rejectionReason: { type: String, default: "" },
   vehicle: {

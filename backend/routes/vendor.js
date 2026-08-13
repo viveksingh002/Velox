@@ -67,6 +67,76 @@ router.post("/pricing/:email", async (req, res) => {
   }
 });
 
+// ── GET /api/vendor/profile/:email ───────────────────────────────────────────
+// Returns the vendor's profile info shaped for the Profile page.
+router.get("/profile/:email", async (req, res) => {
+  try {
+    const vendor = await Vendor.findOne({ email: req.params.email }).select("-__v");
+    if (!vendor) return res.status(404).json({ success: false, message: "Vendor not found" });
+
+    res.json({
+      success: true,
+      data: {
+        name:  vendor.name,
+        email: vendor.email,
+        phone: vendor.phone,
+        avatar: vendor.avatar || "",
+        joined: vendor.createdAt
+          ? new Date(vendor.createdAt).toLocaleDateString("en-US", { month: "short", year: "numeric" })
+          : "",
+        vehicleModel:       vendor.vehicle?.model || "",
+        registrationNumber: vendor.vehicle?.number || "",
+        rating:             vendor.rating || 0,
+        totalRides:         vendor.totalRides || 0,
+      },
+    });
+  } catch (err) {
+    console.error("Vendor profile fetch error:", err);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+});
+
+// ── PUT /api/vendor/profile/:email ───────────────────────────────────────────
+// Updates editable profile fields (name, phone, avatar). Email is not
+// editable here since it's the vendor's login identifier.
+router.put("/profile/:email", async (req, res) => {
+  try {
+    const { name, phone, avatar } = req.body;
+
+    const updateData = {};
+    if (name  !== undefined) updateData.name  = name;
+    if (phone !== undefined) updateData.phone = phone;
+    if (avatar !== undefined) updateData.avatar = avatar;
+
+    const vendor = await Vendor.findOneAndUpdate(
+      { email: req.params.email },
+      updateData,
+      { new: true }
+    );
+    if (!vendor) return res.status(404).json({ success: false, message: "Vendor not found" });
+
+    res.json({
+      success: true,
+      data: {
+        name:  vendor.name,
+        email: vendor.email,
+        phone: vendor.phone,
+        avatar: vendor.avatar || "",
+        joined: vendor.createdAt
+          ? new Date(vendor.createdAt).toLocaleDateString("en-US", { month: "short", year: "numeric" })
+          : "",
+        vehicleModel:       vendor.vehicle?.model || "",
+        registrationNumber: vendor.vehicle?.number || "",
+        rating:             vendor.rating || 0,
+        totalRides:         vendor.totalRides || 0,
+      },
+    });
+  } catch (err) {
+    console.error("Vendor profile update error:", err);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+});
+
 // ── GET /api/vendor/nearby?type=bike ─────────────────────────────────────────
 // Returns all fully-approved vendors of the requested vehicle type.
 // "Fully approved" means:
