@@ -21,17 +21,18 @@ app.use((req, res, next) => {
 connectDB();
 
 // Routes
-const bookingRoutes = require("./routes/booking");
-const vendorRoutes  = require("./routes/vendor");
-const adminRoutes   = require("./routes/admin");
+const bookingRoutes  = require("./routes/booking");
+const vendorRoutes   = require("./routes/vendor");
+const adminRoutes    = require("./routes/admin");
+const customerRoutes = require("./routes/customer");
 
-app.use("/api",       bookingRoutes);
-app.use("/api/vendor", vendorRoutes);
-app.use("/api/admin",  adminRoutes);
+app.use("/api",         bookingRoutes);
+app.use("/api/vendor",  vendorRoutes);
+app.use("/api/admin",   adminRoutes);
+app.use("/api/customer", customerRoutes);
 
 // Test route
 app.get("/", (req, res) => res.send("Backend is running 🚀"));
 
 // Start
 app.listen(5000, () => console.log("Server running on port 5000"));
-
