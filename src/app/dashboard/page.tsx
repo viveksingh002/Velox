@@ -1,397 +1,261 @@
-'use client'
+"use client";
 
-import { useEffect, useState } from 'react'
-import { supabase } from '@/lib/supabase'
-import Link from 'next/link'
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 
-export default function DashboardPage() {
-  const [user, setUser] = useState<any>(null)
-  const [loading, setLoading] = useState(true)
+const API = "http://localhost:5000/api";
+const TABS = ["All", "Ongoing", "Completed", "Cancelled"];
 
-  useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => {
-      if (!data.user) {
-        window.location.href = '/signin'
-      } else {
-        setUser(data.user)
-const displayName = data.user?.user_metadata?.full_name || data.user?.email?.split('@')[0] || 'User'
-localStorage.setItem("velox_user_name", displayName)
-setLoading(false)
-      }
-    })
-  }, [])
+interface Booking {
+  _id: string;
+  pickup: string;
+  drop: string;
+  vehicle: string;
+  price: number;
+  status: string;
+  driverName: string;
+  paymentStatus: string;
+  createdAt: string;
+}
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut()
-    window.location.href = '/'
-  }
+function StatusBadge({ status }: { status: string }) {
+  const map: Record<string, { label: string; bg: string; color: string }> = {
+    pending:     { label: "Finding Driver", bg: "#fefce8", color: "#92400e" },
+    accepted:    { label: "Driver Accepted", bg: "#eff6ff", color: "#1d4ed8" },
+    arrived:     { label: "Driver Arrived", bg: "#fef3c7", color: "#92400e" },
+    in_progress: { label: "Ongoing",        bg: "#f0fdf4", color: "#15803d" },
+    completed:   { label: "Completed",      bg: "#f0fdf4", color: "#15803d" },
+    cancelled:   { label: "Cancelled",      bg: "#fef2f2", color: "#dc2626" },
+  };
+  const s = map[status] || { label: status, bg: "#f3f4f6", color: "#374151" };
+  return (
+    <span style={{ fontSize: 11, fontWeight: 700, padding: "4px 10px", borderRadius: 99, background: s.bg, color: s.color }}>
+      {s.label}
+    </span>
+  );
+}
 
-  const getInitials = () => {
-    const name = user?.user_metadata?.full_name || user?.email || ''
-    if (user?.user_metadata?.full_name) {
-      return user.user_metadata.full_name.split(' ').map((w: string) => w[0]).join('').toUpperCase().slice(0, 2)
-    }
-    return name[0]?.toUpperCase() || 'U'
-  }
+const VEHICLE_ICONS: Record<string, JSX.Element> = {
+  bike: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="5.5" cy="17.5" r="3.5"/><circle cx="18.5" cy="17.5" r="3.5"/><path d="M9 6l1.5 5.5L5.5 17"/><path d="M9 6h6"/><path d="M15 6l3 4.5"/></svg>,
+  auto: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 17h1m16 0h1M4 9l2-5h12l2 5"/><rect x="2" y="9" width="20" height="8" rx="2"/><circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/></svg>,
+  car:  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M5 17H3a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h1l3-4h10l3 4h1a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2h-2"/><circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/></svg>,
+};
 
-  const getDisplayName = () => {
-    return user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User'
-  }
+function BookingCard({ booking }: { booking: Booking }) {
+  const [expanded, setExpanded] = useState(false);
+  const router = useRouter();
 
-  if (loading) {
-    return (
-      <div style={{ minHeight: '100vh', background: '#08080d', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ width: 32, height: 32, border: '2px solid rgba(255,255,255,0.1)', borderTopColor: '#0071e3', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} />
-        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-      </div>
-    )
-  }
+  const dateStr = new Date(booking.createdAt).toLocaleString("en-IN", {
+    day: "numeric", month: "short", hour: "2-digit", minute: "2-digit"
+  });
+
+  const isOngoing = ["pending", "accepted", "arrived", "in_progress"].includes(booking.status);
 
   return (
-    <>
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
-        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    <div style={{ background: "#fff", borderRadius: 16, border: "1px solid #e5e7eb", overflow: "hidden", marginBottom: 12 }}>
+      {/* Top bar for ongoing */}
+      {isOngoing && (
+        <div style={{ height: 3, background: "linear-gradient(90deg, #22c55e, #16a34a)", animation: "shimmer 2s infinite" }} />
+      )}
 
-        .db-root {
-          min-height: 100vh;
-          background: #08080d;
-          font-family: 'Inter', -apple-system, sans-serif;
-          -webkit-font-smoothing: antialiased;
-          color: #fff;
-        }
-
-        /* Navbar */
-        .db-nav {
-          position: sticky;
-          top: 0;
-          z-index: 100;
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          padding: 1rem 2.5rem;
-          background: rgba(8,8,13,0.9);
-          border-bottom: 1px solid rgba(255,255,255,0.06);
-          backdrop-filter: blur(20px);
-        }
-        .db-nav-logo {
-          font-size: 20px;
-          font-weight: 300;
-          font-style: italic;
-          background: linear-gradient(120deg, #fff 30%, #5ac8fa 100%);
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
-          background-clip: text;
-          text-decoration: none;
-        }
-        .db-nav-right { display: flex; align-items: center; gap: 1rem; }
-        .db-nav-name { font-size: 13px; color: rgba(255,255,255,0.4); font-weight: 500; }
-        .db-nav-avatar {
-          width: 34px; height: 34px;
-          border-radius: 50%;
-          background: linear-gradient(135deg, #0071e3, #5ac8fa);
-          display: flex; align-items: center; justify-content: center;
-          font-size: 12px; font-weight: 700; color: #fff;
-          border: 2px solid rgba(0,113,227,0.4);
-        }
-        .db-logout-btn {
-          padding: 7px 16px;
-          border-radius: 980px;
-          border: 1px solid rgba(255,255,255,0.1);
-          background: rgba(255,255,255,0.04);
-          color: rgba(255,255,255,0.5);
-          font-size: 12px;
-          font-weight: 500;
-          cursor: pointer;
-          transition: all 0.2s;
-          font-family: inherit;
-          display: flex; align-items: center; gap: 6px;
-        }
-        .db-logout-btn:hover {
-          background: rgba(239,68,68,0.08);
-          border-color: rgba(239,68,68,0.2);
-          color: #fca5a5;
-        }
-
-        /* Main */
-        .db-main { max-width: 1100px; margin: 0 auto; padding: 3rem 2.5rem; }
-
-        /* Welcome */
-        .db-welcome {
-          margin-bottom: 3rem;
-          padding-bottom: 2rem;
-          border-bottom: 1px solid rgba(255,255,255,0.06);
-        }
-        .db-welcome-label {
-          font-size: 11px;
-          color: #0071e3;
-          letter-spacing: 2.5px;
-          font-weight: 700;
-          margin-bottom: 0.5rem;
-        }
-        .db-welcome-title {
-          font-size: clamp(28px, 4vw, 40px);
-          font-weight: 700;
-          letter-spacing: -1.5px;
-          color: #fff;
-          margin-bottom: 0.4rem;
-        }
-        .db-welcome-title span {
-          background: linear-gradient(135deg, #5ac8fa, #0071e3);
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
-          background-clip: text;
-        }
-        .db-welcome-sub { font-size: 14px; color: rgba(255,255,255,0.35); }
-
-        /* Stats */
-        .db-stats {
-          display: grid;
-          grid-template-columns: repeat(3, 1fr);
-          gap: 14px;
-          margin-bottom: 2.5rem;
-        }
-        .db-stat {
-          background: rgba(255,255,255,0.03);
-          border: 1px solid rgba(255,255,255,0.07);
-          border-radius: 18px;
-          padding: 1.6rem 1.8rem;
-          transition: all 0.25s;
-        }
-        .db-stat:hover {
-          background: rgba(255,255,255,0.05);
-          border-color: rgba(0,113,227,0.2);
-        }
-        .db-stat-icon {
-          font-size: 22px;
-          margin-bottom: 1rem;
-          display: block;
-        }
-        .db-stat-num {
-          font-size: 28px;
-          font-weight: 700;
-          letter-spacing: -1px;
-          color: #fff;
-          margin-bottom: 0.2rem;
-        }
-        .db-stat-label {
-          font-size: 12px;
-          color: rgba(255,255,255,0.3);
-          font-weight: 500;
-        }
-
-        /* Quick actions */
-        .db-section-title {
-          font-size: 16px;
-          font-weight: 600;
-          color: rgba(255,255,255,0.7);
-          letter-spacing: -0.3px;
-          margin-bottom: 1rem;
-        }
-        .db-actions {
-          display: grid;
-          grid-template-columns: repeat(2, 1fr);
-          gap: 14px;
-          margin-bottom: 2.5rem;
-        }
-        .db-action-card {
-          background: rgba(255,255,255,0.03);
-          border: 1px solid rgba(255,255,255,0.07);
-          border-radius: 18px;
-          padding: 1.8rem 2rem;
-          cursor: pointer;
-          text-decoration: none;
-          transition: all 0.3s;
-          display: flex;
-          align-items: center;
-          gap: 1.2rem;
-        }
-        .db-action-card:hover {
-          background: rgba(0,113,227,0.07);
-          border-color: rgba(0,113,227,0.25);
-          transform: translateY(-3px);
-          box-shadow: 0 12px 40px rgba(0,0,0,0.3);
-        }
-        .db-action-icon {
-          width: 48px; height: 48px;
-          border-radius: 14px;
-          background: rgba(0,113,227,0.1);
-          border: 1px solid rgba(0,113,227,0.2);
-          display: flex; align-items: center; justify-content: center;
-          font-size: 20px;
-          flex-shrink: 0;
-          transition: all 0.3s;
-        }
-        .db-action-card:hover .db-action-icon {
-          background: rgba(0,113,227,0.2);
-          box-shadow: 0 0 20px rgba(0,113,227,0.3);
-        }
-        .db-action-title {
-          font-size: 15px;
-          font-weight: 600;
-          color: #fff;
-          margin-bottom: 0.2rem;
-        }
-        .db-action-desc { font-size: 12px; color: rgba(255,255,255,0.35); }
-        .db-action-arrow {
-          margin-left: auto;
-          color: rgba(255,255,255,0.2);
-          transition: all 0.2s;
-          flex-shrink: 0;
-        }
-        .db-action-card:hover .db-action-arrow {
-          color: #0071e3;
-          transform: translateX(4px);
-        }
-
-        /* Recent bookings empty */
-        .db-empty {
-          background: rgba(255,255,255,0.02);
-          border: 1px dashed rgba(255,255,255,0.08);
-          border-radius: 18px;
-          padding: 3rem;
-          text-align: center;
-        }
-        .db-empty-icon { font-size: 36px; margin-bottom: 1rem; opacity: 0.4; }
-        .db-empty-title { font-size: 15px; font-weight: 600; color: rgba(255,255,255,0.4); margin-bottom: 0.4rem; }
-        .db-empty-sub { font-size: 13px; color: rgba(255,255,255,0.2); margin-bottom: 1.5rem; }
-        .db-empty-btn {
-          display: inline-flex;
-          align-items: center;
-          gap: 8px;
-          padding: 10px 24px;
-          background: #0071e3;
-          color: #fff;
-          border: none;
-          border-radius: 980px;
-          font-size: 13px;
-          font-weight: 600;
-          cursor: pointer;
-          text-decoration: none;
-          transition: all 0.2s;
-          font-family: inherit;
-          box-shadow: 0 4px 16px rgba(0,113,227,0.35);
-        }
-        .db-empty-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,113,227,0.5); }
-
-        @media (max-width: 640px) {
-          .db-main { padding: 2rem 1.25rem; }
-          .db-stats { grid-template-columns: 1fr 1fr; }
-          .db-actions { grid-template-columns: 1fr; }
-          .db-nav { padding: 1rem 1.25rem; }
-        }
-      `}</style>
-
-      <div className="db-root">
-
-        {/* Navbar */}
-        <nav className="db-nav">
-          <Link href="/" className="db-nav-logo">Vëlox</Link>
-          <div className="db-nav-right">
-            <span className="db-nav-name">{getDisplayName()}</span>
-            <div className="db-nav-avatar">{getInitials()}</div>
-            <button className="db-logout-btn" onClick={handleLogout}>
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
-                <polyline points="16 17 21 12 16 7"/>
-                <line x1="21" y1="12" x2="9" y2="12"/>
-              </svg>
-              Logout
-            </button>
-          </div>
-        </nav>
-
-        <main className="db-main">
-
-          {/* Welcome */}
-          <div className="db-welcome">
-            <div className="db-welcome-label">DASHBOARD</div>
-            <h1 className="db-welcome-title">
-              Welcome back, <span>{getDisplayName().split(' ')[0]}</span> 👋
-            </h1>
-            <p className="db-welcome-sub">Here's what's happening with your account today.</p>
-          </div>
-
-          {/* Stats */}
-          <div className="db-stats">
-            <div className="db-stat">
-              <span className="db-stat-icon">🚗</span>
-              <div className="db-stat-num">0</div>
-              <div className="db-stat-label">Total Bookings</div>
+      <button onClick={() => setExpanded(!expanded)} style={{ width: "100%", padding: "16px 20px", background: "none", border: "none", cursor: "pointer", textAlign: "left" }}>
+        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
+          {/* Vehicle icon + info */}
+          <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+            <div style={{ width: 44, height: 44, borderRadius: 12, background: "#f3f4f6", display: "flex", alignItems: "center", justifyContent: "center", color: "#374151", flexShrink: 0 }}>
+              {VEHICLE_ICONS[booking.vehicle] || VEHICLE_ICONS.car}
             </div>
-            <div className="db-stat">
-              <span className="db-stat-icon">⏳</span>
-              <div className="db-stat-num">0</div>
-              <div className="db-stat-label">Active Rides</div>
-            </div>
-            <div className="db-stat">
-              <span className="db-stat-icon">⭐</span>
-              <div className="db-stat-num">—</div>
-              <div className="db-stat-label">Avg Rating</div>
+            <div>
+              <p style={{ fontSize: 15, fontWeight: 700, color: "#111827", marginBottom: 4, textTransform: "capitalize" }}>{booking.vehicle} Ride</p>
+              <p style={{ fontSize: 12, color: "#9ca3af" }}>{dateStr}</p>
             </div>
           </div>
 
-          {/* Quick Actions */}
-          <div className="db-section-title">Quick Actions</div>
-          <div className="db-actions">
-            <Link href="/#fleet" className="db-action-card">
-              <div className="db-action-icon">🚀</div>
-              <div>
-                <div className="db-action-title">Book a Vehicle</div>
-                <div className="db-action-desc">Browse fleet and book instantly</div>
-              </div>
-              <svg className="db-action-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M5 12h14M12 5l7 7-7 7"/>
-              </svg>
-            </Link>
-            <Link href="/bookings" className="db-action-card">
-              <div className="db-action-icon">📋</div>
-              <div>
-                <div className="db-action-title">My Bookings</div>
-                <div className="db-action-desc">View and manage your rides</div>
-              </div>
-              <svg className="db-action-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M5 12h14M12 5l7 7-7 7"/>
-              </svg>
-            </Link>
-            <Link href="/profile" className="db-action-card">
-              <div className="db-action-icon">👤</div>
-              <div>
-                <div className="db-action-title">Edit Profile</div>
-                <div className="db-action-desc">Update your personal info</div>
-              </div>
-              <svg className="db-action-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M5 12h14M12 5l7 7-7 7"/>
-              </svg>
-            </Link>
-            <Link href="/#support" className="db-action-card">
-              <div className="db-action-icon">🛟</div>
-              <div>
-                <div className="db-action-title">Support</div>
-                <div className="db-action-desc">Get help with your bookings</div>
-              </div>
-              <svg className="db-action-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M5 12h14M12 5l7 7-7 7"/>
-              </svg>
-            </Link>
+          {/* Fare + status */}
+          <div style={{ textAlign: "right", flexShrink: 0 }}>
+            <p style={{ fontSize: 18, fontWeight: 800, color: "#111827", marginBottom: 6 }}>₹{booking.price}</p>
+            <StatusBadge status={booking.status} />
           </div>
+        </div>
 
-          {/* Recent Bookings */}
-          <div className="db-section-title">Recent Bookings</div>
-          <div className="db-empty">
-            <div className="db-empty-icon">🚗</div>
-            <div className="db-empty-title">No bookings yet</div>
-            <div className="db-empty-sub">Your ride history will appear here once you book a vehicle.</div>
-            <Link href="/#fleet" className="db-empty-btn">
-              Book your first ride
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M5 12h14M12 5l7 7-7 7"/>
-              </svg>
-            </Link>
+        {/* Route preview */}
+        <div style={{ display: "flex", gap: 10, alignItems: "flex-start", marginTop: 14 }}>
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", paddingTop: 3, flexShrink: 0 }}>
+            <div style={{ width: 7, height: 7, borderRadius: "50%", background: "#111827" }} />
+            <div style={{ width: 1.5, height: 20, background: "#e5e7eb" }} />
+            <div style={{ width: 7, height: 7, borderRadius: 2, background: "#ef4444" }} />
           </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <p style={{ fontSize: 12.5, color: "#374151", fontWeight: 500, marginBottom: 14, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{booking.pickup}</p>
+            <p style={{ fontSize: 12.5, color: "#374151", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{booking.drop}</p>
+          </div>
+        </div>
+      </button>
 
-        </main>
+      {/* Expanded details */}
+      {expanded && (
+        <div style={{ padding: "0 20px 18px", borderTop: "1px solid #f3f4f6" }}>
+          <div style={{ paddingTop: 14, display: "flex", flexDirection: "column", gap: 12 }}>
+
+            {/* Chips */}
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+              {[
+                { label: `₹${booking.price}`, icon: "💰" },
+                { label: booking.paymentStatus === "online" ? "Online" : "Cash", icon: "💳" },
+                booking.driverName && { label: booking.driverName, icon: "🧑‍✈️" },
+              ].filter(Boolean).map((chip: any) => (
+                <span key={chip.label} style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, fontWeight: 500, padding: "5px 12px", borderRadius: 99, background: "#f3f4f6", color: "#374151" }}>
+                  {chip.icon} {chip.label}
+                </span>
+              ))}
+            </div>
+
+            {/* Track button for ongoing */}
+            {isOngoing && (
+              <button
+                onClick={() => router.push(`/ride/${booking._id}`)}
+                style={{ width: "100%", padding: "12px", borderRadius: 12, border: "none", background: "#111827", color: "#fff", fontSize: 14, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                Track Ride
+              </button>
+            )}
+
+            {/* Rebook for completed/cancelled */}
+            {(booking.status === "completed" || booking.status === "cancelled") && (
+              <button
+                onClick={() => router.push(`/?pickup=${encodeURIComponent(booking.pickup)}&drop=${encodeURIComponent(booking.drop)}`)}
+                style={{ width: "100%", padding: "12px", borderRadius: 12, border: "1.5px solid #e5e7eb", background: "#fff", color: "#374151", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>
+                Rebook →
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      <style>{`@keyframes shimmer{0%,100%{opacity:1}50%{opacity:.6}}`}</style>
+    </div>
+  );
+}
+
+function EmptyState({ tab }: { tab: string }) {
+  return (
+    <div style={{ background: "#fff", borderRadius: 16, border: "1px solid #e5e7eb", padding: "60px 32px", textAlign: "center" }}>
+      <div style={{ fontSize: 40, marginBottom: 16 }}>
+        {tab === "Ongoing" ? "🚗" : tab === "Completed" ? "✅" : tab === "Cancelled" ? "❌" : "📋"}
       </div>
-    </>
-  )
+      <h3 style={{ fontSize: 17, fontWeight: 700, color: "#111827", marginBottom: 8 }}>No {tab === "All" ? "" : tab.toLowerCase()} bookings</h3>
+      <p style={{ fontSize: 14, color: "#9ca3af" }}>Your {tab === "All" ? "" : tab.toLowerCase()} rides will appear here.</p>
+    </div>
+  );
+}
+
+function SummaryStrip({ bookings }: { bookings: Booking[] }) {
+  const completed  = bookings.filter((b) => b.status === "completed");
+  const totalSpent = completed.reduce((s, b) => s + (b.price || 0), 0);
+  const ongoing    = bookings.filter((b) => ["pending", "accepted", "arrived", "in_progress"].includes(b.status));
+
+  return (
+    <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12, marginBottom: 24 }}>
+      {[
+        { label: "Total Rides",  value: bookings.length.toString()  },
+        { label: "Total Spent",  value: `₹${totalSpent}`            },
+        { label: "Ongoing",      value: ongoing.length.toString()    },
+      ].map((s) => (
+        <div key={s.label} style={{ background: "#fff", borderRadius: 14, border: "1px solid #e5e7eb", padding: "16px 18px" }}>
+          <p style={{ fontSize: 11, fontWeight: 700, color: "#9ca3af", letterSpacing: "1px", textTransform: "uppercase", marginBottom: 8 }}>{s.label}</p>
+          <p style={{ fontSize: 22, fontWeight: 800, color: "#111827" }}>{s.value}</p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+export default function MyBookingsPage() {
+  const router   = useRouter();
+  const [bookings,  setBookings]  = useState<Booking[]>([]);
+  const [loading,   setLoading]   = useState(true);
+  const [activeTab, setActiveTab] = useState("All");
+  const [search,    setSearch]    = useState("");
+
+  useEffect(() => {
+    const phone = localStorage.getItem("velox_customer_phone");
+    if (!phone) { setLoading(false); return; }
+    fetchBookings(phone);
+    const interval = setInterval(() => fetchBookings(phone), 10000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const fetchBookings = async (phone: string) => {
+    try {
+      const res  = await fetch(`${API}/booking/customer/${encodeURIComponent(phone)}`);
+      const data = await res.json();
+      if (data.success) setBookings(data.data);
+    } catch {}
+    finally { setLoading(false); }
+  };
+
+  const filtered = bookings.filter((b) => {
+    const matchTab =
+      activeTab === "All" ||
+      (activeTab === "Ongoing"    && ["pending", "accepted", "arrived", "in_progress"].includes(b.status)) ||
+      (activeTab === "Completed"  && b.status === "completed") ||
+      (activeTab === "Cancelled"  && b.status === "cancelled");
+
+    const matchSearch = !search ||
+      b.pickup.toLowerCase().includes(search.toLowerCase()) ||
+      b.drop.toLowerCase().includes(search.toLowerCase()) ||
+      b._id.slice(-6).toLowerCase().includes(search.toLowerCase());
+
+    return matchTab && matchSearch;
+  });
+
+  if (loading) return (
+    <div style={{ minHeight: "100vh", background: "#f3f4f6", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "Inter,sans-serif" }}>
+      <div style={{ width: 32, height: 32, border: "2px solid #e5e7eb", borderTopColor: "#111827", borderRadius: "50%", animation: "spin 0.7s linear infinite" }} />
+      <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+    </div>
+  );
+
+  return (
+    <div style={{ minHeight: "100vh", background: "#f3f4f6", fontFamily: "Inter,sans-serif" }}>
+      {/* Header */}
+      <div style={{ background: "#111827", padding: "0 24px", height: 60, display: "flex", alignItems: "center", gap: 14, position: "sticky", top: 0, zIndex: 100 }}>
+        <button onClick={() => router.back()} style={{ width: 34, height: 34, borderRadius: "50%", background: "rgba(255,255,255,0.1)", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", flexShrink: 0 }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+        </button>
+        <span style={{ fontSize: 17, fontWeight: 700, color: "#fff" }}>My Bookings</span>
+      </div>
+
+      <div style={{ maxWidth: 680, margin: "0 auto", padding: "24px 20px 48px" }}>
+
+        {bookings.length > 0 && <SummaryStrip bookings={bookings} />}
+
+        {/* Search + Tabs */}
+        <div style={{ background: "#fff", borderRadius: 16, border: "1px solid #e5e7eb", padding: "14px 18px", marginBottom: 16 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 14px", background: "#f9fafb", borderRadius: 12, border: "1px solid #f3f4f6", marginBottom: 12 }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+            <input
+              placeholder="Search by location or ride ID..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              style={{ flex: 1, border: "none", outline: "none", background: "transparent", fontSize: 13.5, color: "#111827", fontFamily: "Inter,sans-serif" }}
+            />
+          </div>
+          <div style={{ display: "flex", gap: 6, overflowX: "auto" }}>
+            {TABS.map((tab) => (
+              <button key={tab} onClick={() => setActiveTab(tab)} style={{ padding: "7px 16px", borderRadius: 99, border: "none", cursor: "pointer", fontSize: 13, fontWeight: 600, background: activeTab === tab ? "#111827" : "#f3f4f6", color: activeTab === tab ? "#fff" : "#6b7280", transition: "all 0.2s", whiteSpace: "nowrap", flexShrink: 0 }}>
+                {tab}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Booking cards */}
+        {filtered.length === 0
+          ? <EmptyState tab={activeTab} />
+          : filtered.map((b) => <BookingCard key={b._id} booking={b} />)
+        }
+      </div>
+    </div>
+  );
 }
