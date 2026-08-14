@@ -11,6 +11,7 @@ const bookingSchema = new mongoose.Schema({
   driverName:         { type: String, default: "" },
   driverEmail:        { type: String, default: "" }, 
   customerName:       { type: String, default: "Customer" },
+  customerEmail:      { type: String, default: "" }, 
   customerPhone:      { type: String, default: "" },
   paymentStatus:      { type: String, default: "cash" },
   otp:                { type: String, default: "" },

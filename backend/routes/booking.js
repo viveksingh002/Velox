@@ -13,6 +13,20 @@ router.post("/booking", async (req, res) => {
   }
 });
 
+
+router.post("/booking/by-ids", async (req, res) => {
+  try {
+    const { ids } = req.body;
+    const bookings = await Booking.find({ 
+      _id: { $in: ids } 
+    }).sort({ createdAt: -1 });
+    res.json({ success: true, data: bookings });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+
 // GET - active booking (BEFORE /:id)
 router.get("/booking/active", async (req, res) => {
   try {
@@ -39,7 +53,7 @@ router.get("/booking/earnings", async (req, res) => {
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
     sevenDaysAgo.setHours(0, 0, 0, 0);
 
-    // 👇 sirf isi partner (driverEmail) ki completed bookings uthao
+    
     const bookings = await Booking.find({
       status: "completed",
       driverEmail: email,
@@ -75,6 +89,20 @@ router.get("/booking/pending", async (req, res) => {
   }
 });
 
+// GET - all bookings for a customer by their Supabase email (BEFORE /:id)
+// This is the primary way "My Bookings" should fetch data — independent
+// of localStorage, so it works across devices/browsers for the same login.
+router.get("/booking/customer-email/:email", async (req, res) => {
+  try {
+    const bookings = await Booking.find({
+      customerEmail: req.params.email,
+    }).sort({ createdAt: -1 });
+    res.json({ success: true, data: bookings });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // GET - all bookings
 router.get("/booking", async (req, res) => {
   try {
@@ -98,7 +126,7 @@ router.get("/booking/:id/status", async (req, res) => {
   }
 });
 
-// PATCH - accept (ab driverEmail bhi save hoga)
+// PATCH - accept 
 router.patch("/booking/:id/accept", async (req, res) => {
   try {
     const booking = await Booking.findByIdAndUpdate(

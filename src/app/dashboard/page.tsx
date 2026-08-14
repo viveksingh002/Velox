@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabase";
 
 const API = "http://localhost:5000/api";
 const TABS = ["All", "Ongoing", "Completed", "Cancelled"];
@@ -20,12 +21,12 @@ interface Booking {
 
 function StatusBadge({ status }: { status: string }) {
   const map: Record<string, { label: string; bg: string; color: string }> = {
-    pending:     { label: "Finding Driver", bg: "#fefce8", color: "#92400e" },
+    pending:     { label: "Finding Driver",  bg: "#fefce8", color: "#92400e" },
     accepted:    { label: "Driver Accepted", bg: "#eff6ff", color: "#1d4ed8" },
-    arrived:     { label: "Driver Arrived", bg: "#fef3c7", color: "#92400e" },
-    in_progress: { label: "Ongoing",        bg: "#f0fdf4", color: "#15803d" },
-    completed:   { label: "Completed",      bg: "#f0fdf4", color: "#15803d" },
-    cancelled:   { label: "Cancelled",      bg: "#fef2f2", color: "#dc2626" },
+    arrived:     { label: "Driver Arrived",  bg: "#fef3c7", color: "#92400e" },
+    in_progress: { label: "Ongoing",         bg: "#f0fdf4", color: "#15803d" },
+    completed:   { label: "Completed",       bg: "#f0fdf4", color: "#15803d" },
+    cancelled:   { label: "Cancelled",       bg: "#fef2f2", color: "#dc2626" },
   };
   const s = map[status] || { label: status, bg: "#f3f4f6", color: "#374151" };
   return (
@@ -53,14 +54,11 @@ function BookingCard({ booking }: { booking: Booking }) {
 
   return (
     <div style={{ background: "#fff", borderRadius: 16, border: "1px solid #e5e7eb", overflow: "hidden", marginBottom: 12 }}>
-      {/* Top bar for ongoing */}
       {isOngoing && (
-        <div style={{ height: 3, background: "linear-gradient(90deg, #22c55e, #16a34a)", animation: "shimmer 2s infinite" }} />
+        <div style={{ height: 3, background: "linear-gradient(90deg,#22c55e,#16a34a)", animation: "shimmer 2s infinite" }} />
       )}
-
       <button onClick={() => setExpanded(!expanded)} style={{ width: "100%", padding: "16px 20px", background: "none", border: "none", cursor: "pointer", textAlign: "left" }}>
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
-          {/* Vehicle icon + info */}
           <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
             <div style={{ width: 44, height: 44, borderRadius: 12, background: "#f3f4f6", display: "flex", alignItems: "center", justifyContent: "center", color: "#374151", flexShrink: 0 }}>
               {VEHICLE_ICONS[booking.vehicle] || VEHICLE_ICONS.car}
@@ -70,15 +68,11 @@ function BookingCard({ booking }: { booking: Booking }) {
               <p style={{ fontSize: 12, color: "#9ca3af" }}>{dateStr}</p>
             </div>
           </div>
-
-          {/* Fare + status */}
           <div style={{ textAlign: "right", flexShrink: 0 }}>
             <p style={{ fontSize: 18, fontWeight: 800, color: "#111827", marginBottom: 6 }}>₹{booking.price}</p>
             <StatusBadge status={booking.status} />
           </div>
         </div>
-
-        {/* Route preview */}
         <div style={{ display: "flex", gap: 10, alignItems: "flex-start", marginTop: 14 }}>
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", paddingTop: 3, flexShrink: 0 }}>
             <div style={{ width: 7, height: 7, borderRadius: "50%", background: "#111827" }} />
@@ -92,46 +86,34 @@ function BookingCard({ booking }: { booking: Booking }) {
         </div>
       </button>
 
-      {/* Expanded details */}
       {expanded && (
         <div style={{ padding: "0 20px 18px", borderTop: "1px solid #f3f4f6" }}>
           <div style={{ paddingTop: 14, display: "flex", flexDirection: "column", gap: 12 }}>
-
-            {/* Chips */}
             <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
               {[
-                { label: `₹${booking.price}`, icon: "💰" },
-                { label: booking.paymentStatus === "online" ? "Online" : "Cash", icon: "💳" },
-                booking.driverName && { label: booking.driverName, icon: "🧑‍✈️" },
+                { label: `₹${booking.price}`,                                      icon: "💰" },
+                { label: booking.paymentStatus === "online" ? "Online" : "Cash",   icon: "💳" },
+                booking.driverName ? { label: booking.driverName, icon: "🧑‍✈️" } : null,
               ].filter(Boolean).map((chip: any) => (
                 <span key={chip.label} style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, fontWeight: 500, padding: "5px 12px", borderRadius: 99, background: "#f3f4f6", color: "#374151" }}>
                   {chip.icon} {chip.label}
                 </span>
               ))}
             </div>
-
-            {/* Track button for ongoing */}
             {isOngoing && (
-              <button
-                onClick={() => router.push(`/ride/${booking._id}`)}
-                style={{ width: "100%", padding: "12px", borderRadius: 12, border: "none", background: "#111827", color: "#fff", fontSize: 14, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+              <button onClick={() => router.push(`/ride/${booking._id}`)} style={{ width: "100%", padding: "12px", borderRadius: 12, border: "none", background: "#111827", color: "#fff", fontSize: 14, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
                 Track Ride
               </button>
             )}
-
-            {/* Rebook for completed/cancelled */}
             {(booking.status === "completed" || booking.status === "cancelled") && (
-              <button
-                onClick={() => router.push(`/?pickup=${encodeURIComponent(booking.pickup)}&drop=${encodeURIComponent(booking.drop)}`)}
-                style={{ width: "100%", padding: "12px", borderRadius: 12, border: "1.5px solid #e5e7eb", background: "#fff", color: "#374151", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>
+              <button onClick={() => router.push(`/?pickup=${encodeURIComponent(booking.pickup)}&drop=${encodeURIComponent(booking.drop)}`)} style={{ width: "100%", padding: "12px", borderRadius: 12, border: "1.5px solid #e5e7eb", background: "#fff", color: "#374151", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>
                 Rebook →
               </button>
             )}
           </div>
         </div>
       )}
-
       <style>{`@keyframes shimmer{0%,100%{opacity:1}50%{opacity:.6}}`}</style>
     </div>
   );
@@ -153,13 +135,12 @@ function SummaryStrip({ bookings }: { bookings: Booking[] }) {
   const completed  = bookings.filter((b) => b.status === "completed");
   const totalSpent = completed.reduce((s, b) => s + (b.price || 0), 0);
   const ongoing    = bookings.filter((b) => ["pending", "accepted", "arrived", "in_progress"].includes(b.status));
-
   return (
     <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12, marginBottom: 24 }}>
       {[
-        { label: "Total Rides",  value: bookings.length.toString()  },
-        { label: "Total Spent",  value: `₹${totalSpent}`            },
-        { label: "Ongoing",      value: ongoing.length.toString()    },
+        { label: "Total Rides", value: bookings.length.toString() },
+        { label: "Total Spent", value: `₹${totalSpent}`           },
+        { label: "Ongoing",     value: ongoing.length.toString()   },
       ].map((s) => (
         <div key={s.label} style={{ background: "#fff", borderRadius: 14, border: "1px solid #e5e7eb", padding: "16px 18px" }}>
           <p style={{ fontSize: 11, fontWeight: 700, color: "#9ca3af", letterSpacing: "1px", textTransform: "uppercase", marginBottom: 8 }}>{s.label}</p>
@@ -171,41 +152,60 @@ function SummaryStrip({ bookings }: { bookings: Booking[] }) {
 }
 
 export default function MyBookingsPage() {
-  const router   = useRouter();
+  const router      = useRouter();
   const [bookings,  setBookings]  = useState<Booking[]>([]);
   const [loading,   setLoading]   = useState(true);
+  const [loadError, setLoadError] = useState("");
   const [activeTab, setActiveTab] = useState("All");
   const [search,    setSearch]    = useState("");
 
-  useEffect(() => {
-    const phone = localStorage.getItem("velox_customer_phone");
-    if (!phone) { setLoading(false); return; }
-    fetchBookings(phone);
-    const interval = setInterval(() => fetchBookings(phone), 10000);
-    return () => clearInterval(interval);
-  }, []);
-
-  const fetchBookings = async (phone: string) => {
+  const fetchBookings = async (email: string) => {
     try {
-      const res  = await fetch(`${API}/booking/customer/${encodeURIComponent(phone)}`);
+      const res  = await fetch(`${API}/booking/customer-email/${encodeURIComponent(email)}`);
+      if (!res.ok) {
+        setLoadError(`Server responded ${res.status}. Check the backend route /api/booking/customer-email/:email exists.`);
+        return;
+      }
       const data = await res.json();
-      if (data.success) setBookings(data.data);
-    } catch {}
-    finally { setLoading(false); }
+      if (data.success) {
+        setBookings(data.data);
+        setLoadError("");
+      } else {
+        setLoadError(data.error || "Could not load bookings.");
+      }
+    } catch {
+      setLoadError("Could not reach the server. Is the backend running?");
+    } finally {
+      setLoading(false);
+    }
   };
+
+  useEffect(() => {
+    let interval: ReturnType<typeof setInterval> | null = null;
+
+    const init = async () => {
+      const { data } = await supabase.auth.getUser();
+      const email = data.user?.email;
+      if (!email) { setLoading(false); return; }
+
+      fetchBookings(email);
+      interval = setInterval(() => fetchBookings(email), 8000);
+    };
+
+    init();
+    return () => { if (interval) clearInterval(interval); };
+  }, []);
 
   const filtered = bookings.filter((b) => {
     const matchTab =
       activeTab === "All" ||
-      (activeTab === "Ongoing"    && ["pending", "accepted", "arrived", "in_progress"].includes(b.status)) ||
-      (activeTab === "Completed"  && b.status === "completed") ||
-      (activeTab === "Cancelled"  && b.status === "cancelled");
-
+      (activeTab === "Ongoing"   && ["pending", "accepted", "arrived", "in_progress"].includes(b.status)) ||
+      (activeTab === "Completed" && b.status === "completed") ||
+      (activeTab === "Cancelled" && b.status === "cancelled");
     const matchSearch = !search ||
       b.pickup.toLowerCase().includes(search.toLowerCase()) ||
       b.drop.toLowerCase().includes(search.toLowerCase()) ||
       b._id.slice(-6).toLowerCase().includes(search.toLowerCase());
-
     return matchTab && matchSearch;
   });
 
@@ -218,7 +218,6 @@ export default function MyBookingsPage() {
 
   return (
     <div style={{ minHeight: "100vh", background: "#f3f4f6", fontFamily: "Inter,sans-serif" }}>
-      {/* Header */}
       <div style={{ background: "#111827", padding: "0 24px", height: 60, display: "flex", alignItems: "center", gap: 14, position: "sticky", top: 0, zIndex: 100 }}>
         <button onClick={() => router.back()} style={{ width: 34, height: 34, borderRadius: "50%", background: "rgba(255,255,255,0.1)", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", flexShrink: 0 }}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
@@ -227,19 +226,19 @@ export default function MyBookingsPage() {
       </div>
 
       <div style={{ maxWidth: 680, margin: "0 auto", padding: "24px 20px 48px" }}>
+        {loadError && (
+          <div style={{ marginBottom: 16, padding: "12px 16px", background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 12, fontSize: 12.5, color: "#b91c1c", fontWeight: 600 }}>
+            ⚠️ {loadError}
+          </div>
+        )}
 
         {bookings.length > 0 && <SummaryStrip bookings={bookings} />}
 
-        {/* Search + Tabs */}
         <div style={{ background: "#fff", borderRadius: 16, border: "1px solid #e5e7eb", padding: "14px 18px", marginBottom: 16 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 14px", background: "#f9fafb", borderRadius: 12, border: "1px solid #f3f4f6", marginBottom: 12 }}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-            <input
-              placeholder="Search by location or ride ID..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              style={{ flex: 1, border: "none", outline: "none", background: "transparent", fontSize: 13.5, color: "#111827", fontFamily: "Inter,sans-serif" }}
-            />
+            <input placeholder="Search by location or ride ID..." value={search} onChange={(e) => setSearch(e.target.value)}
+              style={{ flex: 1, border: "none", outline: "none", background: "transparent", fontSize: 13.5, color: "#111827", fontFamily: "Inter,sans-serif" }} />
           </div>
           <div style={{ display: "flex", gap: 6, overflowX: "auto" }}>
             {TABS.map((tab) => (
@@ -250,7 +249,6 @@ export default function MyBookingsPage() {
           </div>
         </div>
 
-        {/* Booking cards */}
         {filtered.length === 0
           ? <EmptyState tab={activeTab} />
           : filtered.map((b) => <BookingCard key={b._id} booking={b} />)
