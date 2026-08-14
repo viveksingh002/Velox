@@ -177,6 +177,19 @@ router.patch("/booking/:id/cancel", async (req, res) => {
   }
 });
 
+
+router.get("/booking/customer/:phone", async (req, res) => {
+  try {
+    const bookings = await Booking.find({ 
+      customerPhone: req.params.phone 
+    }).sort({ createdAt: -1 });
+    res.json({ success: true, data: bookings });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+
 // PATCH - complete
 router.patch("/booking/:id/complete", async (req, res) => {
   try {
