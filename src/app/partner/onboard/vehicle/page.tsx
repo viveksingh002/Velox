@@ -59,6 +59,12 @@ export default function VehiclePage() {
 
   const valid = data.vehicleType && data.vehicleNumber.trim() && data.vehicleModel.trim();
 
+  // Keeps formatting consistent between the two text fields:
+  // Vehicle number -> ALL CAPS (e.g. MH12AB1234)
+  // Vehicle model  -> Title Case (e.g. Tata Ace)
+  const toTitleCase = (str: string) =>
+    str.replace(/\w\S*/g, (w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase());
+
   const handleNext = () => {
     localStorage.setItem("onboard_vehicle", JSON.stringify(data));
     router.push("/partner/onboard/documents");
@@ -109,7 +115,7 @@ export default function VehiclePage() {
           <div style={{ marginBottom: 28 }}>
             <p style={{ fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 8 }}>Vehicle model / capacity</p>
             <input placeholder="Tata Ace / 1.5 Ton" value={data.vehicleModel}
-              onChange={(e) => setData({ ...data, vehicleModel: e.target.value })}
+              onChange={(e) => setData({ ...data, vehicleModel: toTitleCase(e.target.value) })}
               style={{ width: "100%", padding: "12px 0", border: "none", borderBottom: "1.5px solid #e5e7eb", outline: "none", fontSize: 14, color: "#111827", background: "transparent", fontFamily: "Inter,sans-serif" }} />
           </div>
 
