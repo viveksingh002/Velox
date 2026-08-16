@@ -20,6 +20,15 @@ const FIELDS = [
   { key: "upi"           as const, label: "UPI ID (optional)",     placeholder: "name@upi",                 maxLength: 50 },
 ];
 
+// Format rules per field. Each returns true if valid (empty is only OK for optional fields).
+const VALIDATORS: Record<keyof Step3Data, { regex: RegExp; message: string; optional?: boolean }> = {
+  accountName:   { regex: /^[A-Za-z][A-Za-z\s.'-]{2,59}$/,         message: "Only letters and spaces allowed, e.g. Rahul Sharma." },
+  accountNumber: { regex: /^\d{9,18}$/,                            message: "Enter a valid 9-18 digit account number." },
+  ifsc:          { regex: /^[A-Z]{4}0[A-Z0-9]{6}$/,                message: "Invalid format. Use a format like HDFC0001234." },
+  mobile:        { regex: /^[6-9]\d{9}$/,                          message: "Enter a valid 10-digit Indian mobile number." },
+  upi:           { regex: /^[\w.\-]{2,}@[A-Za-z][\w]{1,}$/,        message: "Invalid format. Use a format like name@upi.", optional: true },
+};
+
 function Stepper({ step }: { step: number }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, marginBottom: 24 }}>
@@ -86,11 +95,32 @@ export default function BankPage() {
     });
   }, []);
 
-  const valid = data.accountName.trim() && data.accountNumber.trim() && data.ifsc.trim() && data.mobile.length === 10;
+  // Per-field format validity. Optional fields (upi) are valid when empty.
+  const fieldValid = (key: keyof Step3Data) => {
+    const value = data[key].trim();
+    const rule  = VALIDATORS[key];
+    if (value === "") return rule.optional ?? false;
+    return rule.regex.test(value);
+  };
+
+  const allFieldsValid = (Object.keys(VALIDATORS) as (keyof Step3Data)[]).every(fieldValid);
+  const valid = allFieldsValid;
+
+  const handleChange = (key: keyof Step3Data, raw: string) => {
+    let next = raw;
+    if (key === "ifsc") next = raw.toUpperCase();
+    if (key === "accountNumber" || key === "mobile") next = raw.replace(/\D/g, "");
+    if (key === "accountName") next = raw.replace(/[0-9]/g, "");
+    setData({ ...data, [key]: next });
+  };
 
   const handleSubmit = async () => {
     if (!loginEmail) {
       setError("Could not verify your login email. Please sign in again.");
+      return;
+    }
+    if (!valid) {
+      setError("Please fix the highlighted fields before submitting.");
       return;
     }
     setSubmitting(true);
@@ -172,6 +202,9 @@ export default function BankPage() {
           <div style={{ display: "flex", flexDirection: "column", gap: 20, marginBottom: 24 }}>
             {FIELDS.map((f) => {
               const focused = focusedField === f.key;
+              const touched = data[f.key].trim() !== "";
+              const fValid  = fieldValid(f.key);
+              const showError = touched && !fValid && !focused;
               return (
                 <div key={f.key}>
                   <p style={{ fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 8 }}>{f.label}</p>
@@ -179,11 +212,16 @@ export default function BankPage() {
                     placeholder={f.placeholder}
                     value={data[f.key]}
                     maxLength={f.maxLength}
-                    onChange={(e) => setData({ ...data, [f.key]: e.target.value })}
+                    onChange={(e) => handleChange(f.key, e.target.value)}
                     onFocus={() => setFocusedField(f.key)}
                     onBlur={() => setFocusedField(null)}
-                    style={{ width: "100%", padding: "10px 0", border: "none", borderBottom: `1.5px solid ${focused ? "#2563eb" : "#e5e7eb"}`, outline: "none", fontSize: 14, color: "#111827", background: "transparent", fontFamily: "Inter,sans-serif", transition: "border-color 0.2s" }}
+                    style={{ width: "100%", padding: "10px 0", border: "none", borderBottom: `1.5px solid ${showError ? "#ef4444" : focused ? "#2563eb" : "#e5e7eb"}`, outline: "none", fontSize: 14, color: "#111827", background: "transparent", fontFamily: "Inter,sans-serif", transition: "border-color 0.2s" }}
                   />
+                  {showError && (
+                    <p style={{ fontSize: 12, color: "#ef4444", fontWeight: 500, marginTop: 6 }}>
+                      {VALIDATORS[f.key].message}
+                    </p>
+                  )}
                 </div>
               );
             })}
