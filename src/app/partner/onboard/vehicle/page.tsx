@@ -69,7 +69,16 @@ export default function VehiclePage() {
   const vehicleNumberTouched = data.vehicleNumber.trim() !== "";
   const vehicleNumberValid   = !vehicleNumberTouched || VEHICLE_NUMBER_REGEX.test(data.vehicleNumber.trim());
 
-  const valid = data.vehicleType && data.vehicleNumber.trim() && data.vehicleModel.trim() && vehicleNumberValid;
+  // Model / capacity format: letters/numbers/spaces/dots/slash/hyphen only,
+  // and MUST include a "/" separator between model and capacity
+  // e.g. "Tata Ace / 1.5 Ton" — rejects "Tata Ace" (no slash) or "Tata@Ace"
+  const VEHICLE_MODEL_REGEX = /^[A-Za-z0-9][A-Za-z0-9\s./-]*$/;
+  const vehicleModelTouched = data.vehicleModel.trim() !== "";
+  const vehicleModelCharsValid = !vehicleModelTouched || VEHICLE_MODEL_REGEX.test(data.vehicleModel.trim());
+  const vehicleModelHasSlash   = !vehicleModelTouched || data.vehicleModel.includes("/");
+  const vehicleModelValid      = vehicleModelCharsValid && vehicleModelHasSlash;
+
+  const valid = data.vehicleType && data.vehicleNumber.trim() && data.vehicleModel.trim() && vehicleNumberValid && vehicleModelValid;
 
   const handleNext = () => {
     localStorage.setItem("onboard_vehicle", JSON.stringify(data));
@@ -127,7 +136,14 @@ export default function VehiclePage() {
             <p style={{ fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 8 }}>Vehicle model / capacity</p>
             <input placeholder="Tata Ace / 1.5 Ton" value={data.vehicleModel}
               onChange={(e) => setData({ ...data, vehicleModel: toTitleCase(e.target.value) })}
-              style={{ width: "100%", padding: "12px 0", border: "none", borderBottom: "1.5px solid #e5e7eb", outline: "none", fontSize: 14, color: "#111827", background: "transparent", fontFamily: "Inter,sans-serif" }} />
+              style={{ width: "100%", padding: "12px 0", border: "none", borderBottom: `1.5px solid ${vehicleModelValid ? "#e5e7eb" : "#ef4444"}`, outline: "none", fontSize: 14, color: "#111827", background: "transparent", fontFamily: "Inter,sans-serif" }} />
+            {!vehicleModelValid && (
+              <p style={{ fontSize: 12, color: "#ef4444", fontWeight: 500, marginTop: 6 }}>
+                {!vehicleModelHasSlash
+                  ? "Include a '/' separator, e.g. Tata Ace / 1.5 Ton."
+                  : "Invalid format. Use a format like Tata Ace / 1.5 Ton."}
+              </p>
+            )}
           </div>
 
           <button onClick={handleNext} disabled={!valid}
