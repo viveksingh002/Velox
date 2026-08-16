@@ -57,13 +57,19 @@ export default function VehiclePage() {
     if (saved) setData(JSON.parse(saved));
   }, []);
 
-  const valid = data.vehicleType && data.vehicleNumber.trim() && data.vehicleModel.trim();
-
   // Keeps formatting consistent between the two text fields:
   // Vehicle number -> ALL CAPS (e.g. MH12AB1234)
   // Vehicle model  -> Title Case (e.g. Tata Ace)
   const toTitleCase = (str: string) =>
     str.replace(/\w\S*/g, (w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase());
+
+  // Indian vehicle registration format: 2 letters, 1-2 digits, 1-2 letters, 4 digits
+  // e.g. MH12AB1234, DL8CAF1234
+  const VEHICLE_NUMBER_REGEX = /^[A-Z]{2}[0-9]{1,2}[A-Z]{1,2}[0-9]{4}$/;
+  const vehicleNumberTouched = data.vehicleNumber.trim() !== "";
+  const vehicleNumberValid   = !vehicleNumberTouched || VEHICLE_NUMBER_REGEX.test(data.vehicleNumber.trim());
+
+  const valid = data.vehicleType && data.vehicleNumber.trim() && data.vehicleModel.trim() && vehicleNumberValid;
 
   const handleNext = () => {
     localStorage.setItem("onboard_vehicle", JSON.stringify(data));
@@ -108,7 +114,12 @@ export default function VehiclePage() {
             <p style={{ fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 8 }}>Vehicle number</p>
             <input placeholder="MH12AB1234" value={data.vehicleNumber}
               onChange={(e) => setData({ ...data, vehicleNumber: e.target.value.toUpperCase() })}
-              style={{ width: "100%", padding: "12px 0", border: "none", borderBottom: "1.5px solid #e5e7eb", outline: "none", fontSize: 14, color: "#111827", background: "transparent", fontFamily: "Inter,sans-serif" }} />
+              style={{ width: "100%", padding: "12px 0", border: "none", borderBottom: `1.5px solid ${vehicleNumberValid ? "#e5e7eb" : "#ef4444"}`, outline: "none", fontSize: 14, color: "#111827", background: "transparent", fontFamily: "Inter,sans-serif" }} />
+            {!vehicleNumberValid && (
+              <p style={{ fontSize: 12, color: "#ef4444", fontWeight: 500, marginTop: 6 }}>
+                Invalid format. Use a format like MH12AB1234.
+              </p>
+            )}
           </div>
 
           {/* Vehicle model */}
