@@ -121,8 +121,8 @@ export default function VehiclePage() {
           {/* Vehicle number */}
           <div style={{ marginBottom: 18 }}>
             <p style={{ fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 8 }}>Vehicle number</p>
-            <input placeholder="MH12AB1234" value={data.vehicleNumber}
-              onChange={(e) => setData({ ...data, vehicleNumber: e.target.value.toUpperCase() })}
+            <input placeholder="MH12AB1234" value={data.vehicleNumber} maxLength={10}
+              onChange={(e) => setData({ ...data, vehicleNumber: e.target.value.toUpperCase().slice(0, 10) })}
               style={{ width: "100%", padding: "12px 0", border: "none", borderBottom: `1.5px solid ${vehicleNumberValid ? "#e5e7eb" : "#ef4444"}`, outline: "none", fontSize: 14, color: "#111827", background: "transparent", fontFamily: "Inter,sans-serif" }} />
             {!vehicleNumberValid && (
               <p style={{ fontSize: 12, color: "#ef4444", fontWeight: 500, marginTop: 6 }}>

@@ -2,6 +2,7 @@
 
 import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabase";
 
 interface DocFile { name: string; file: File | null; }
 interface Step2Data { aadhaar: DocFile; license: DocFile; rc: DocFile; }
@@ -11,6 +12,8 @@ const DOCS = [
   { key: "license" as const, label: "Driving License",     sub: "Valid driving license",      accept: "image/*,.pdf" },
   { key: "rc"      as const, label: "Vehicle RC",          sub: "Registration Certificate",   accept: "image/*,.pdf" },
 ];
+
+const STORAGE_BUCKET = "vendor-documents";
 
 function Stepper({ step }: { step: number }) {
   return (
@@ -33,6 +36,7 @@ export default function DocumentsPage() {
     rc:      { name: "", file: null },
   });
   const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState("");
 
   const refs = {
     aadhaar: useRef<HTMLInputElement>(null),
@@ -46,17 +50,44 @@ export default function DocumentsPage() {
     setData((prev) => ({ ...prev, [key]: { name: file.name, file } }));
   };
 
+  // Uploads one file to Supabase Storage and returns its public URL
+  const uploadToSupabase = async (key: string, file: File) => {
+    const ext  = file.name.split(".").pop() || "dat";
+    const path = `${key}-${Date.now()}.${ext}`;
+
+    const { error } = await supabase.storage
+      .from(STORAGE_BUCKET)
+      .upload(path, file, { upsert: true, cacheControl: "3600" });
+
+    if (error) throw new Error(`${key}: ${error.message}`);
+
+    const { data: urlData } = supabase.storage.from(STORAGE_BUCKET).getPublicUrl(path);
+    return urlData.publicUrl;
+  };
+
   const handleContinue = async () => {
     setUploading(true);
-    // Save doc names to localStorage (actual upload happens on final submit)
-    localStorage.setItem("onboard_documents", JSON.stringify({
-      aadhaar: data.aadhaar.name,
-      license: data.license.name,
-      rc:      data.rc.name,
-    }));
-    await new Promise((r) => setTimeout(r, 700));
-    setUploading(false);
-    router.push("/partner/onboard/bank");
+    setUploadError("");
+    try {
+      const urls: Record<string, string> = {};
+
+      for (const doc of DOCS) {
+        const file = data[doc.key].file;
+        if (!file) continue;
+        urls[doc.key] = await uploadToSupabase(doc.key, file);
+      }
+
+      // Real, permanent URLs are stored now — not just file names.
+      // The final submit step (bank/review) reads these and sends
+      // them to the backend as documents.aadhaarUrl / licenseUrl / rcUrl.
+      localStorage.setItem("onboard_documents", JSON.stringify(urls));
+
+      router.push("/partner/onboard/bank");
+    } catch (err: any) {
+      setUploadError(err?.message || "Upload failed. Please try again.");
+    } finally {
+      setUploading(false);
+    }
   };
 
   return (
@@ -117,14 +148,20 @@ export default function DocumentsPage() {
           </div>
 
           {/* Security note */}
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 24, padding: "10px 14px", background: "#f9fafb", borderRadius: 10 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16, padding: "10px 14px", background: "#f9fafb", borderRadius: 10 }}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
             <p style={{ fontSize: 12, color: "#6b7280" }}>Documents are securely stored and manually verified by our team.</p>
           </div>
 
+          {uploadError && (
+            <div style={{ marginBottom: 16, padding: "12px 16px", background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 12, fontSize: 12.5, color: "#b91c1c", fontWeight: 600 }}>
+              ⚠️ {uploadError}
+            </div>
+          )}
+
           <button onClick={handleContinue} disabled={!allSelected || uploading}
             style={{ width: "100%", padding: "15px", borderRadius: 14, border: "none", cursor: allSelected && !uploading ? "pointer" : "not-allowed", background: allSelected && !uploading ? "#111827" : "#d1d5db", color: "#fff", fontSize: 15, fontWeight: 600, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
-            {uploading ? "Saving…" : "Continue"}
+            {uploading ? "Uploading…" : "Continue"}
             {!uploading && <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>}
           </button>
         </div>
