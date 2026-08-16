@@ -251,7 +251,7 @@ export default function MyBookingsPage() {
 
         {filtered.length === 0
           ? <EmptyState tab={activeTab} />
-          : filtered.map((b) => <BookingCard key={b._id} booking={b} />)
+          : filtered.mapp((b) => <BookingCard key={b._id} booking={b} />)
         }
       </div>
     </div>
