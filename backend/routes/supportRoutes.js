@@ -34,7 +34,7 @@ router.post("/support/send", async (req, res) => {
     await transporter.sendMail({
       from: `"Vëlox Support Form" <${process.env.GMAIL_USER}>`,
       to: process.env.SUPPORT_RECEIVER_EMAIL || process.env.GMAIL_USER,
-      replyTo: safeEmail, // so you can hit "Reply" and it goes straight to the user
+      replyTo: safeEmail, 
       subject: `New support message from ${safeName}`,
       text: `From: ${safeName} <${safeEmail}>\n\n${safeMessage}`,
       html: `
