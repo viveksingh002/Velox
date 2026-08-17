@@ -140,7 +140,7 @@ export default function CheckoutPage() {
         setStage('idle')
       }
     } catch {
-      alert('Server se connect nahi ho pa raha!')
+      alert('Server is not connected')
       setStage('idle')
     }
   }

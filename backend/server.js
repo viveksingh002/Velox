@@ -25,7 +25,9 @@ const bookingRoutes  = require("./routes/booking");
 const vendorRoutes   = require("./routes/vendor");
 const adminRoutes    = require("./routes/admin");
 const customerRoutes = require("./routes/customer");
+const supportRoutes = require("./routes/supportRoutes");
 
+app.use("/api", supportRoutes);
 app.use("/api",         bookingRoutes);
 app.use("/api/vendor",  vendorRoutes);
 app.use("/api/admin",   adminRoutes);
@@ -36,3 +38,5 @@ app.get("/", (req, res) => res.send("Backend is running 🚀"));
 
 // Start
 app.listen(5000, () => console.log("Server running on port 5000"));
+
+
