@@ -77,3 +77,67 @@ velox/
 ```
 
 ---
+
+## 🚀 Getting Started
+
+### Prerequisites
+
+- Node.js 18+
+- MongoDB (local or Atlas)
+- A Supabase project (for Auth + Storage)
+
+### 1. Clone & Install
+
+```bash
+git clone <your-repo-url>
+cd velox
+
+# Frontend
+cd velox
+npm install
+
+# Backend
+cd ../backend
+npm install
+```
+
+### 2. Environment Variables
+
+Create `.env.local` in the frontend root:
+
+```env
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+BACKEND_URL=http://localhost:5000
+
+NEXT_PUBLIC_ZEGO_APP_ID=your_zego_app_id
+NEXT_PUBLIC_ZEGO_SERVER_SECRET=your_zego_server_secret
+```
+
+Create `.env` in `backend/`:
+
+```env
+MONGO_URI=your_mongodb_connection_string
+PORT=5000
+```
+
+### 3. Supabase Setup
+
+Create two **public** storage buckets:
+
+- `vendor-documents` — Aadhaar, License, RC uploads
+- `vehicle-images` — Vehicle photos for pricing review
+
+### 4. Run the App
+
+```bash
+# Terminal 1 — backend
+cd backend
+npm run dev
+
+# Terminal 2 — frontend
+cd velox
+npm run dev
+```
+
+App runs at `http://localhost:3000`, API at `http://localhost:5000`.
