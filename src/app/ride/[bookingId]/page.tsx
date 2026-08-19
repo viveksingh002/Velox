@@ -354,7 +354,7 @@ export default function RideTrackingPage() {
             </div>
           )}
 
-          {!canCancel && status !== 'completed' && (
+{!canCancel && (status as string) !== 'completed' && (
             <div style={{ padding: '10px 24px 0' }}>
               <p style={{ fontSize: 11, color: '#9ca3af', fontWeight: 500, textAlign: 'center' }}>
                 Cancellation is unavailable — your ride has already started.
