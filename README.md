@@ -141,3 +141,12 @@ npm run dev
 ```
 
 App runs at `http://localhost:3000`, API at `http://localhost:5000`.
+
+---
+
+## 🗺️ Key Flows
+
+- **Partner onboarding:** `/partner/onboard/vehicle` → `/documents` → `/bank`
+- **Partner dashboard:** `/partner/dashboard`
+- **Customer booking:** `/search` → `/checkout` → `/ride/[id]`
+- **Admin review:** `/admin/dashboard` → `/admin/vendors/[id]` or `/admin/vehicles/[id]`
