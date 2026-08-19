@@ -130,7 +130,7 @@ function TruckIcon({ color }: { color: string }) {
   )
 }
 
-const iconMap: Record<string, (color: string) => JSX.Element> = {
+const iconMap: Record<string, (color: string) => React.ReactElement> = {
   bike:  (c) => <BikeIcon color={c} />,
   car:   (c) => <CarIcon color={c} />,
   suv:   (c) => <SuvIcon color={c} />,
