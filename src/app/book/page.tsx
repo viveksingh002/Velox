@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 
@@ -34,7 +34,7 @@ const vehicleTypes = [
 
 const fmt = (p: Place) => [p.name, p.city, p.state, p.country].filter(Boolean).join(', ')
 
-export default function BookPage() {
+function BookPageContent() {
   const router       = useRouter()
   const searchParams = useSearchParams()
 
@@ -457,5 +457,12 @@ export default function BookPage() {
         <div className="book-hint">Type at least 3 characters to search locations</div>
       </div>
     </>
+  )
+}
+export default function BookPage() {
+  return (
+    <Suspense fallback={<div style={{minHeight:'100svh',display:'flex',alignItems:'center',justifyContent:'center'}}>Loading...</div>}>
+      <BookPageContent />
+    </Suspense>
   )
 }
