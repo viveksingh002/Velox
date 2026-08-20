@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-const API = "http://localhost:5000/api";
+const API = "https://velox-d49r.onrender.com/api";
 
 export default function SupportPage() {
   const [name,    setName]    = useState("");

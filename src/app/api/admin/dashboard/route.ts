@@ -2,7 +2,7 @@
 
 import { NextResponse } from "next/server";
 
-const BACKEND = process.env.BACKEND_URL || "http://localhost:5000";
+const BACKEND = process.env.BACKEND_URL || "https://velox-d49r.onrender.com";
 
 export async function GET() {
   try {

@@ -14,7 +14,7 @@ export default function Page() {
       if (!email) { setUserType("customer"); return; }
 
       try {
-        const res = await fetch(`http://localhost:5000/api/vendor/status/${encodeURIComponent(email)}`);
+        const res = await fetch(`https://velox-d49r.onrender.com/api/vendor/status/${encodeURIComponent(email)}`);
         const json = await res.json();
         if (json.success) {
           // Keep localStorage in sync so Profile.tsx's vendor path can read it right away

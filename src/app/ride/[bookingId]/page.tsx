@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { useParams, useSearchParams, useRouter } from 'next/navigation'
 
-const API = "http://localhost:5000/api"
+const API = "https://velox-d49r.onrender.com/api"
 
 export default function RideTrackingPage() {
   const params    = useParams()

@@ -177,7 +177,7 @@ export default function VideoKYCPage() {
  
     const poll = setInterval(async () => {
       try {
-        const res = await fetch(`http://localhost:5000/api/vendor/status/${encodeURIComponent(email)}`)
+        const res = await fetch(`https://velox-d49r.onrender.com/api/vendor/status/${encodeURIComponent(email)}`)
         const data = await res.json()
         if (data.success && data.videoKycStatus === 'completed') {
           clearInterval(poll)

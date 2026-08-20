@@ -108,7 +108,7 @@ Create `.env.local` in the frontend root:
 ```env
 NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
-BACKEND_URL=http://localhost:5000
+BACKEND_URL=https://velox-d49r.onrender.com
 
 NEXT_PUBLIC_ZEGO_APP_ID=your_zego_app_id
 NEXT_PUBLIC_ZEGO_SERVER_SECRET=your_zego_server_secret
@@ -140,7 +140,7 @@ cd velox
 npm run dev
 ```
 
-App runs at `http://localhost:3000`, API at `http://localhost:5000`.
+App runs at `http://localhost:3000`, API at `https://velox-d49r.onrender.com`.
 
 ---
 

@@ -182,7 +182,7 @@ function PricingModal({ onClose, onSubmitted }: { onClose: () => void; onSubmitt
     setError(""); setSubmitting(true);
     try {
       const email = localStorage.getItem("velox_vendor_email");
-      const res   = await fetch(`http://localhost:5000/api/vendor/pricing/${encodeURIComponent(email!)}`, {
+      const res   = await fetch(`https://velox-d49r.onrender.com/api/vendor/pricing/${encodeURIComponent(email!)}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ baseFare: Number(baseFare), pricePerKm: Number(pricePerKm), waitingCharge: Number(waitingCharge) || 0, vehicleImage }),
@@ -505,7 +505,7 @@ export default function PartnerDashboard() {
     const email = localStorage.getItem("velox_vendor_email");
     if (!email) { setLoading(false); return; }
     try {
-      const res  = await fetch(`http://localhost:5000/api/vendor/status/${encodeURIComponent(email)}`);
+      const res  = await fetch(`https://velox-d49r.onrender.com/api/vendor/status/${encodeURIComponent(email)}`);
       const data = await res.json();
       if (data.success) {
         setStatus(data.status as VendorStatus);
@@ -524,7 +524,7 @@ const fetchEarnings = async () => {
   const email = localStorage.getItem("velox_vendor_email");
   if (!email) return;
   try {
-    const res  = await fetch(`http://localhost:5000/api/booking/earnings?email=${encodeURIComponent(email)}`);
+    const res  = await fetch(`https://velox-d49r.onrender.com/api/booking/earnings?email=${encodeURIComponent(email)}`);
     const data = await res.json();
     if (data.success && Array.isArray(data.data)) setEarningsData(data.data);
   } catch {}

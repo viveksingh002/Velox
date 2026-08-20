@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 
-const API = "http://localhost:5000/api";
+const API = "https://velox-d49r.onrender.com/api";
 const TABS = ["All", "Ongoing", "Completed", "Cancelled"];
 
 interface Booking {

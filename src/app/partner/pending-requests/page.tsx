@@ -2,7 +2,7 @@
 import { useState, useEffect, useCallback } from "react";
 import PartnerNav from "../components/PartnerNav";
 
-const API = "http://localhost:5000/api";
+const API = "https://velox-d49r.onrender.com/api";
 
 type Request = {
   id: string;

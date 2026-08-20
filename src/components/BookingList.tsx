@@ -6,7 +6,7 @@ export default function BookingList() {
   const [data, setData] = useState([]);
 
   useEffect(() => {
-    fetch("http://localhost:5000/api/booking")
+    fetch("https://velox-d49r.onrender.com/api/booking")
       .then((res) => res.json())
       .then((res) => setData(res));
   }, []);

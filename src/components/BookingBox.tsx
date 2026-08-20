@@ -7,7 +7,7 @@ export default function BookingBox() {
   const [drop, setDrop] = useState("");
 
   const handleBooking = async () => {
-    const res = await fetch("http://localhost:5000/api/booking", {
+    const res = await fetch("https://velox-d49r.onrender.com/api/booking", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({

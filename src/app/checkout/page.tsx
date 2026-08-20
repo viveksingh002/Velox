@@ -36,7 +36,7 @@ function VehicleIcon({ type }: { type: string }) {
 }
 
 const TIMEOUT_SECONDS = 120
-const API = "http://localhost:5000/api"
+const API = "https://velox-d49r.onrender.com/api"
 
 function CheckoutPageContent() {
   const params  = useSearchParams()

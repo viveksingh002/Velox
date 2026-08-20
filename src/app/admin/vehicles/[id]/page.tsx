@@ -19,7 +19,7 @@ export default function AdminVehicleReviewPage() {
   useEffect(() => {
     async function load() {
       try {
-        const res = await axios.get(`http://localhost:5000/api/admin/vehicles/${id}`);
+        const res = await axios.get(`https://velox-d49r.onrender.com/api/admin/vehicles/${id}`);
         setData(res.data.vehicle);
       } catch (err) { console.error(err); }
       finally { setLoading(false); }
@@ -28,14 +28,14 @@ export default function AdminVehicleReviewPage() {
   }, [id]);
 
   const approve = async () => {
-    try { setActionLoading(true); await axios.post(`http://localhost:5000/api/admin/vehicles/${id}/approve`); router.push("/admin/dashboard"); }
+    try { setActionLoading(true); await axios.post(`https://velox-d49r.onrender.com/api/admin/vehicles/${id}/approve`); router.push("/admin/dashboard"); }
     catch (err) { console.error(err); }
     finally { setActionLoading(false); setShowApprove(false); }
   };
 
   const reject = async () => {
     if (!rejectReason.trim()) return;
-    try { setActionLoading(true); await axios.post(`http://localhost:5000/api/admin/vehicles/${id}/reject`, { reason: rejectReason }); router.push("/admin/dashboard"); }
+    try { setActionLoading(true); await axios.post(`https://velox-d49r.onrender.com/api/admin/vehicles/${id}/reject`, { reason: rejectReason }); router.push("/admin/dashboard"); }
     catch (err) { console.error(err); }
     finally { setActionLoading(false); setShowReject(false); }
   };

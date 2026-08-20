@@ -23,7 +23,7 @@ interface ProfileData {
   totalBookings?: number;
 }
 
-const API = "http://localhost:5000/api";
+const API = "https://velox-d49r.onrender.com/api";
 
 function EditIcon() {
   return (

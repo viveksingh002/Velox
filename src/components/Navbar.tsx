@@ -49,7 +49,7 @@ export default function Navbar() {
   const checkPartnerStatus = async (u: any) => {
     if (!u?.email) { setIsPartner(false); return; }
     try {
-      const res  = await fetch(`http://localhost:5000/api/vendor/status/${encodeURIComponent(u.email)}`);
+      const res  = await fetch(`https://velox-d49r.onrender.com/api/vendor/status/${encodeURIComponent(u.email)}`);
       const data = await res.json();
       if (data.success) {
         setIsPartner(true);

@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import PartnerNav from "../components/PartnerNav";
 
-const API = "http://localhost:5000/api";
+const API = "https://velox-d49r.onrender.com/api";
 const FILTER_TABS = ["All", "Completed", "Cancelled"];
 
 function SummaryStrip({ bookings }: { bookings: any[] }) {
