@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
@@ -38,7 +38,7 @@ function VehicleIcon({ type }: { type: string }) {
 const TIMEOUT_SECONDS = 120
 const API = "http://localhost:5000/api"
 
-export default function CheckoutPage() {
+function CheckoutPageContent() {
   const params  = useSearchParams()
   const router  = useRouter()
 
@@ -332,5 +332,12 @@ export default function CheckoutPage() {
         </div>
       </div>
     </>
+  )
+}
+export default function CheckoutPage() {
+  return (
+    <Suspense fallback={<div style={{minHeight:'100svh',display:'flex',alignItems:'center',justifyContent:'center'}}>Loading...</div>}>
+      <CheckoutPageContent />
+    </Suspense>
   )
 }
