@@ -2,7 +2,7 @@
 
 import { useSearchParams, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import dynamic from "next/dynamic";
 import {
   ArrowLeft, MapPin, Navigation,
@@ -21,7 +21,7 @@ const VEHICLE_META: Record<string, { label: string; Icon: any }> = {
   truck:   { label: "Truck",   Icon: Truck },
 };
 
-export default function SearchPage() {
+function SearchPageContent() {
   const params = useSearchParams();
   const router = useRouter();
 
@@ -378,5 +378,12 @@ export default function SearchPage() {
         </motion.div>
       </div>
     </>
+  );
+}
+export default function SearchPage() {
+  return (
+    <Suspense fallback={<div style={{minHeight:'100svh',display:'flex',alignItems:'center',justifyContent:'center'}}>Loading...</div>}>
+      <SearchPageContent />
+    </Suspense>
   );
 }
