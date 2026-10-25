@@ -153,7 +153,7 @@ npm run dev
 
 # Terminal 2 — frontend
 cd velox
-npm run dev
+npm run dev—-
 ```
 
 App runs at `http://localhost:3000`, API at `http://localhost:5000`.
